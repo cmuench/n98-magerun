@@ -69,7 +69,10 @@ jobs:
             php-version: '7.3'
             run-job: 'OpenMage LTS 20.0.14 PHP 7.3'
             experimental: false
-
+          - machine: 'ubuntu-18.04'
+            php-version: '8.1'
+            run-job: 'OpenMage LTS 20.0.14 PHP 8.1'
+            experimental: false
     env:
       SETUP_DB_PASS: root
 
