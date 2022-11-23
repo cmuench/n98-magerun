@@ -7,11 +7,13 @@ use Mage;
 use Mage_Core_Model_Config_Element;
 use Mage_Cron_Model_Schedule;
 use RuntimeException;
-use Symfony\Component\Console\Helper\DialogHelper;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Validator\Exception\InvalidArgumentException;
 
 class RunCommand extends AbstractCronCommand
@@ -41,7 +43,7 @@ HELP;
      * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @return int|void
+     * @return int
      * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -54,7 +56,7 @@ HELP;
         $jobCode = $input->getArgument('job');
         if (!$jobCode) {
             $this->writeSection($output, 'Cronjob');
-            $jobCode = $this->askJobCode($output, $this->getJobs());
+            $jobCode = $this->askJobCode($input, $output, $this->getJobs());
         }
 
         $runConfigModel = $this->getRunConfigModelByJobCode($jobCode);
@@ -74,38 +76,36 @@ HELP;
     }
 
     /**
+     * @param InputInterface $input
      * @param OutputInterface $output
      * @param array $jobs array of array containing "job" keyed string entries of job-codes
      *
      * @return string         job-code
      * @throws InvalidArgumentException|Exception when user selects invalid job interactively
      */
-    protected function askJobCode(OutputInterface $output, array $jobs)
+    protected function askJobCode(InputInterface $input, OutputInterface $output, array $jobs)
     {
         $index = 0;
         $keyMap = array_keys($jobs);
-        $question = [];
 
+        $choices = [];
         foreach ($jobs as $key => $job) {
-            $question[] = '<comment>[' . ($index++) . ']</comment> ' . $job['Job'] . PHP_EOL;
+            $choices[] = '<comment>' . $job['Job'] . '</comment>';
         }
-        $question[] = '<question>Please select job: </question>' . PHP_EOL;
 
-        /** @var $dialogHelper DialogHelper */
-        $dialogHelper = $this->getHelper('dialog');
-
-        return $dialogHelper->askAndValidate(
-            $output,
-            $question,
-            function ($typeInput) use ($keyMap, $jobs) {
-                $key = $keyMap[$typeInput];
-                if (!isset($jobs[$key])) {
-                    throw new InvalidArgumentException('Invalid job');
-                }
-
-                return $jobs[$key]['Job'];
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
+        $question = new ChoiceQuestion('<question>Please select job: </question>', $choices);
+        $question->setValidator(function ($typeInput) use ($keyMap, $jobs) {
+            $key = $keyMap[$typeInput];
+            if (!isset($jobs[$key])) {
+                throw new InvalidArgumentException('Invalid job');
             }
-        );
+
+            return $jobs[$key]['Job'];
+        });
+
+        return $dialog->ask($input, $output, $question);
     }
 
     /**
@@ -150,7 +150,7 @@ HELP;
         Mage::getConfig()->init()->loadEventObservers('crontab');
         Mage::app()->addEventArea('crontab');
 
-        /* @var $schedule Mage_Cron_Model_Schedule */
+        /* @var Mage_Cron_Model_Schedule $schedule */
         $schedule = Mage::getModel('cron/schedule');
         if (false === $schedule) {
             throw new RuntimeException('Failed to create new Mage_Cron_Model_Schedule model');
@@ -197,7 +197,7 @@ HELP;
      */
     private function scheduleConfigModel($callback, $jobCode)
     {
-        /* @var $schedule Mage_Cron_Model_Schedule */
+        /* @var Mage_Cron_Model_Schedule $schedule */
         $schedule = Mage::getModel('cron/schedule');
         if (false === $schedule) {
             throw new RuntimeException('Failed to create new Mage_Cron_Model_Schedule model');
@@ -233,7 +233,7 @@ HELP;
         $jobsRoot = Mage::getConfig()->getNode('crontab/jobs');
         $defaultJobsRoot = Mage::getConfig()->getNode('default/crontab/jobs');
 
-        /* @var $jobConfig Mage_Core_Model_Config_Element */
+        /* @var Mage_Core_Model_Config_Element $jobConfig */
         $jobConfig = $jobsRoot->{$jobCode};
         if (!$jobConfig || !$jobConfig->run) {
             $jobConfig = $defaultJobsRoot->{$jobCode};
@@ -242,7 +242,7 @@ HELP;
             throw new RuntimeException(sprintf('No job-config found for job "%s"!', $jobCode));
         }
 
-        /* @var $runConfig Mage_Core_Model_Config_Element */
+        /* @var Mage_Core_Model_Config_Element $runConfig */
         $runConfig = $jobConfig->run;
         if (empty($runConfig->model)) {
             throw new RuntimeException(sprintf('No run-config found for job "%s"!', $jobCode));

@@ -8,7 +8,6 @@ use N98\Util\Console\Enabler;
 use N98\Util\Console\Helper\DatabaseHelper;
 use N98\Util\Exec;
 use N98\Util\VerifyOrDie;
-use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -170,7 +169,7 @@ HELP;
         $this->commandConfig = $this->getCommandConfig();
 
         if (is_null($this->tableDefinitions)) {
-            /* @var $dbHelper DatabaseHelper */
+            /* @var DatabaseHelper $dbHelper */
             $dbHelper = $this->getHelper('database');
 
             $this->tableDefinitions = $dbHelper->getTableDefinitions($this->commandConfig);
@@ -251,7 +250,7 @@ HELP;
      * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @return int|void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -317,7 +316,6 @@ HELP;
         $compressor = $this->getCompressor($input->getOption('compression'));
         $fileName = $this->getFileName($input, $output, $compressor);
 
-        /* @var $database DatabaseHelper */
         $database = $this->getDatabaseHelper();
 
         $mysqlClientToolConnectionString = $database->getMysqlClientToolConnectionString();
@@ -519,11 +517,10 @@ HELP;
         $optionAddTime = $input->getOption('add-time');
         [$namePrefix, $nameSuffix] = $this->getFileNamePrefixSuffix($optionAddTime);
 
-        if (
-            (
-                ($fileName = $input->getArgument('filename')) === null
+        if ((
+            ($fileName = $input->getArgument('filename')) === null
                 || ($isDir = is_dir($fileName))
-            )
+        )
             && !$input->getOption('stdout')
         ) {
             $defaultName = VerifyOrDie::filename(
@@ -533,7 +530,8 @@ HELP;
                 $defaultName = rtrim($fileName, '/') . '/' . $defaultName;
             }
             if (!$input->getOption('force')) {
-                $dialog = new QuestionHelper();
+                /* @var QuestionHelper $dialog */
+                $dialog = $this->getHelper('question');
                 $fileName = $dialog->ask(
                     $input,
                     $output,

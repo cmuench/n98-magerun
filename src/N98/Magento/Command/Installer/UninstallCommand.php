@@ -5,11 +5,12 @@ namespace N98\Magento\Command\Installer;
 use Exception;
 use N98\Magento\Command\AbstractMagentoCommand;
 use N98\Util\Filesystem;
-use Symfony\Component\Console\Helper\DialogHelper;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /**
  * Class UninstallCommand
@@ -42,26 +43,28 @@ HELP;
     }
 
     /**
-     * @param InputInterface  $input
+     * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @return int|void
+     * @return int
+     * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->chooseInstallationFolder($input, $output);
         $this->detectMagento($output);
         $this->getApplication()->setAutoExit(false);
-        /* @var $dialog DialogHelper */
-        $dialog = $this->getHelper('dialog');
+
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
 
         $shouldUninstall = $input->getOption('force');
         if (!$shouldUninstall) {
-            $shouldUninstall = $dialog->askConfirmation(
-                $output,
+            $question = new ConfirmationQuestion(
                 '<question>Really uninstall ?</question> <comment>[n]</comment>: ',
                 false
             );
+            $shouldUninstall = $dialog->ask($input, $output, $question);
         }
 
         if ($shouldUninstall) {

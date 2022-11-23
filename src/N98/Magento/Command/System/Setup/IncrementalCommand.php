@@ -2,17 +2,18 @@
 
 namespace N98\Magento\Command\System\Setup;
 
-use Mage_Core_Model_Config;
-use Mage;
-use Mage_Core_Model_Resource_Setup;
 use Exception;
+use Mage;
+use Mage_Core_Model_Config;
+use Mage_Core_Model_Resource_Setup;
 use N98\Magento\Command\AbstractMagentoCommand;
 use ReflectionClass;
 use RuntimeException;
-use Symfony\Component\Console\Helper\DialogHelper;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 
 /**
  * Class IncrementalCommand
@@ -69,7 +70,7 @@ class IncrementalCommand extends AbstractMagentoCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @return int|null|void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -95,7 +96,7 @@ class IncrementalCommand extends AbstractMagentoCommand
 
     protected function _loadSecondConfig()
     {
-        $config = new Mage_Core_Model_Config;
+        $config = new Mage_Core_Model_Config();
         $config->loadBase(); //get app/etc
         $this->_secondConfig = Mage::getConfig()->loadModulesConfiguration('config.xml', $config);
     }
@@ -265,8 +266,7 @@ class IncrementalCommand extends AbstractMagentoCommand
             $db_data_ver = $this->_getDbDataVersionFromName($name);
             $config_ver = $this->_getConfiguredVersionFromResourceObject($setupResource);
 
-            if (
-                (string) $config_ver == (string) $db_ver && //structure
+            if ((string) $config_ver == (string) $db_ver && //structure
                 (string) $config_ver == (string) $db_data_ver //data
             ) {
                 continue;
@@ -383,7 +383,7 @@ class IncrementalCommand extends AbstractMagentoCommand
             throw new RuntimeException('Invalid Type [' . $type . ']: structure, data is valid');
         }
 
-        if (!array_key_Exists($name, $needsUpdate)) {
+        if (!array_key_exists($name, $needsUpdate)) {
             $output->writeln('<error>No updates to run for ' . $name . ', skipping </error>');
 
             return;
@@ -452,16 +452,16 @@ class IncrementalCommand extends AbstractMagentoCommand
         $name,
         $magentoExceptionOutput
     ) {
+        $input = $this->_input;
         $output = $this->_output;
         $output->writeln(["<error>Magento encountered an error while running the following setup resource.</error>", "", "    $name ", "", "<error>The Good News:</error> You know the error happened, and the database", "information below will  help you fix this error!", "", "<error>The Bad News:</error> Because Magento/MySQL can't run setup resources", "transactionally your database is now in an half upgraded, invalid", "state. Even if you fix the error, new errors may occur due to", "this half upgraded, invalid state.", '', "What to Do: ", "1. Figure out why the error happened, and manually fix your", "   database and/or system so it won't happen again.", "2. Restore your database from backup.", "3. Re-run the scripts.", "", "Exception Message:", $e->getMessage(), ""]);
 
         if ($magentoExceptionOutput) {
-            /* @var  $dialog DialogHelper */
-            $dialog = $this->getHelper('dialog');
-            $dialog->ask(
-                $output,
-                '<question>Press Enter to view raw Magento error text:</question> '
-            );
+            /* @var QuestionHelper $dialog */
+            $dialog = $this->getHelper('question');
+            $question = new Question('<question>Press Enter to view raw Magento error text: </question>');
+            $dialog->ask($input, $output, $question);
+
             $output->writeln("Magento Exception Error Text:");
             echo $magentoExceptionOutput, "\n"; //echoing (vs. writeln) to avoid seg fault
         }
@@ -493,14 +493,14 @@ class IncrementalCommand extends AbstractMagentoCommand
      */
     protected function _runStructureOrDataScripts($toUpdate, array $needsUpdate, $type)
     {
+        $input = $this->_input;
         $output = $this->_output;
         $output->writeln('The next ' . $type . ' update to run is <info>' . $toUpdate . '</info>');
-        /* @var  $dialog DialogHelper */
-        $dialog = $this->getHelper('dialog');
-        $dialog->ask(
-            $output,
-            '<question>Press Enter to Run this update: </question>'
-        );
+
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
+        $question = new Question('<question>Press Enter to Run this update: </question>');
+        $dialog->ask($input, $output, $question);
 
         $start = microtime(true);
         $this->_runNamedSetupResource($toUpdate, $needsUpdate, $type);
@@ -580,13 +580,13 @@ class IncrementalCommand extends AbstractMagentoCommand
      */
     protected function _listDetailedUpdateInformation(array $needsUpdate)
     {
+        $input = $this->_input;
         $output = $this->_output;
-        /* @var  $dialog DialogHelper */
-        $dialog = $this->getHelper('dialog');
-        $dialog->ask(
-            $output,
-            '<question>Press Enter to View Update Information: </question>'
-        );
+
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
+        $question = new Question('<question>Press Enter to View Update Information: </question>');
+        $dialog->ask($input, $output, $question);
 
         $this->writeSection($output, 'Detailed Update Information');
         $this->_outputUpdateInformation($needsUpdate);

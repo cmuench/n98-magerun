@@ -2,9 +2,9 @@
 
 namespace N98\Magento\Command\Admin\User;
 
+use Mage;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
-use Mage;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -47,6 +47,7 @@ class UnlockCommand extends AbstractAdminUserCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
+        $this->requireEnterprise($output);
         if (!$this->initMagento()) {
             return 0;
         }
@@ -75,14 +76,16 @@ class UnlockCommand extends AbstractAdminUserCommand
             return 0;
         }
 
-        $dialog = new QuestionHelper();
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
         $shouldUnlockAll = $dialog->ask(
             $input,
             $output,
-            new ConfirmationQuestion(sprintf(
+            new ConfirmationQuestion(
+                sprintf(
                 '<question>Really unlock all %d admin users?</question> <comment>[n]</comment>: ',
                 is_countable($userIds) ? count($userIds) : 0
-                ),
+            ),
                 false
             )
         );

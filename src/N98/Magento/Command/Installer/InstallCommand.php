@@ -17,11 +17,14 @@ use N98\Util\VerifyOrDie;
 use PDO;
 use PDOException;
 use RuntimeException;
-use Symfony\Component\Console\Helper\DialogHelper;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\StringInput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -160,7 +163,7 @@ HELP;
      * @param InputInterface $input
      * @param OutputInterface $output
      * @throws RuntimeException
-     * @return int|null|void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -228,26 +231,27 @@ HELP;
     protected function selectMagentoVersion(InputInterface $input, OutputInterface $output)
     {
         if ($input->getOption('magentoVersion') == null && $input->getOption('magentoVersionByName') == null) {
-            $question = [];
+            $choices = [];
             foreach ($this->commandConfig['magento-packages'] as $key => $package) {
-                $question[] = '<comment>' . str_pad('[' . ($key + 1) . ']', 4, ' ') . '</comment> ' .
-                    $package['name'] . "\n";
+                $choices[] = '<comment>' . $package['name'] . '</comment>';
             }
-            $question[] = "<question>Choose a magento version:</question> ";
 
             $commandConfig = $this->commandConfig;
 
-            $type = $this->getHelper('dialog')->askAndValidate(
-                $output,
-                $question,
-                function ($typeInput) use ($commandConfig) {
-                    if (!in_array($typeInput, range(1, is_countable($commandConfig['magento-packages']) ? count($commandConfig['magento-packages']) : 0))) {
-                        throw new InvalidArgumentException('Invalid type');
-                    }
-
-                    return $typeInput;
+            /** @var QuestionHelper $dialog */
+            $dialog = $this->getHelper('question');
+            $question = new ChoiceQuestion('<question>Choose a magento version: </question>', $choices);
+            $question->setValidator(function ($typeInput) use ($commandConfig) {
+                if (!in_array($typeInput, range(1, is_countable($commandConfig['magento-packages']) ? count($commandConfig['magento-packages']) : 0))) {
+                    throw new InvalidArgumentException('Invalid type');
                 }
-            );
+
+                return $typeInput;
+            });
+
+            $question->setMaxAttempts(2);
+
+            $type = $dialog->ask($input, $output, $question);
         } else {
             $type = null;
 
@@ -339,7 +343,7 @@ HELP;
             );
 
             if ($this->isSourceTypeRepository($package->getSourceType())) {
-                $filesystem = new Filesystem;
+                $filesystem = new Filesystem();
                 $filesystem->recursiveCopy($targetFolder, $installationFolder, ['.git', '.hg']);
             } else {
                 $filesystem = new \Composer\Util\Filesystem();
@@ -444,61 +448,55 @@ HELP;
                 throw new InvalidArgumentException("Database configuration is invalid");
             }
         } else {
-            /** @var DialogHelper $dialog */
-            $dialog = $this->getHelper('dialog');
+            /** @var QuestionHelper $dialog */
+            $dialog = $this->getHelper('question');
             do {
                 $dbHostDefault = $input->getOption('dbHost') ?: 'localhost';
-                $this->config['db_host'] = $dialog->askAndValidate(
-                    $output,
+                $question = new Question(
                     '<question>Please enter the database host</question> <comment>[' . $dbHostDefault . ']</comment>: ',
-                    $this->notEmptyCallback,
-                    false,
                     $dbHostDefault
                 );
+                $question->setValidator($this->notEmptyCallback);
+                $this->config['db_host'] = $dialog->ask($input, $output, $question);
 
                 $dbUserDefault = $input->getOption('dbUser') ?: 'root';
-                $this->config['db_user'] = $dialog->askAndValidate(
-                    $output,
-                    '<question>Please enter the database username</question> <comment>[' . $dbUserDefault .
-                    ']</comment>: ',
-                    $this->notEmptyCallback,
-                    false,
+                $question = new Question(
+                    '<question>Please enter the database username</question> <comment>[' . $dbUserDefault . ']</comment>: ',
                     $dbUserDefault
                 );
+                $question->setValidator($this->notEmptyCallback);
+                $this->config['db_user'] = $dialog->ask($input, $output, $question);
 
                 $dbPassDefault = $input->getOption('dbPass') ?: '';
-                $this->config['db_pass'] = $dialog->ask(
-                    $output,
-                    '<question>Please enter the database password</question> <comment>[' . $dbPassDefault .
-                    ']</comment>: ',
+                $question = new Question(
+                    '<question>Please enter the database password</question> <comment>[' . $dbPassDefault . ']</comment>: ',
                     $dbPassDefault
                 );
+                $this->config['db_pass'] = $dialog->ask($input, $output, $question);
 
                 $dbNameDefault = $input->getOption('dbName') ?: 'magento';
-                $this->config['db_name'] = $dialog->askAndValidate(
-                    $output,
+                $question = new Question(
                     '<question>Please enter the database name</question> <comment>[' . $dbNameDefault . ']</comment>: ',
-                    $this->notEmptyCallback,
-                    false,
                     $dbNameDefault
                 );
+                $question->setValidator($this->notEmptyCallback);
+                $this->config['db_name'] = $dialog->ask($input, $output, $question);
 
                 $dbPortDefault = $input->getOption('dbPort') ?: 3306;
-                $this->config['db_port'] = $dialog->askAndValidate(
-                    $output,
-                    '<question>Please enter the database port </question> <comment>[' . $dbPortDefault .
-                    ']</comment>: ',
-                    $this->notEmptyCallback,
-                    false,
+                $question = new Question(
+                    '<question>Please enter the database port </question> <comment>[' . $dbPortDefault . ']</comment>: ',
                     $dbPortDefault
                 );
+                $question->setValidator($this->notEmptyCallback);
+                $this->config['db_port'] = $dialog->ask($input, $output, $question);
 
                 $dbPrefixDefault = $input->getOption('dbPrefix') ?: '';
-                $this->config['db_prefix'] = $dialog->ask(
-                    $output,
+                $question = new Question(
                     '<question>Please enter the table prefix</question> <comment>[' . $dbPrefixDefault . ']</comment>:',
                     $dbPrefixDefault
                 );
+                $this->config['db_prefix'] = $dialog->ask($input, $output, $question);
+
                 $db = $this->validateDatabaseSettings($output, $input);
             } while ($db === false);
         }
@@ -550,20 +548,23 @@ HELP;
     protected function installSampleData(InputInterface $input, OutputInterface $output)
     {
         $magentoPackage = $this->config['magentoPackage'];
-        /* @var $magentoPackage \Composer\Package\MemoryPackage */
+        /* @var \Composer\Package\MemoryPackage $magentoPackage */
         $extra = $magentoPackage->getExtra();
         if (!isset($extra['sample-data'])) {
             return;
         }
 
-        $dialog = $this->getHelper('dialog');
-
-        $installSampleData = ($input->getOption('installSampleData') !== null)
-            ? $this->_parseBoolOption($input->getOption('installSampleData'))
-            : $dialog->askConfirmation(
-                $output,
-                '<question>Install sample data?</question> <comment>[y]</comment>: '
+        if ($input->getOption('installSampleData') !== null) {
+            $installSampleData = $this->_parseBoolOption($input->getOption('installSampleData'));
+        } else {
+            /** @var QuestionHelper $dialog */
+            $dialog = $this->getHelper('question');
+            $question = new ConfirmationQuestion(
+                '<question>Install sample data?</question> <comment>[y]</comment>: ',
+                true
             );
+            $installSampleData = $dialog->ask($input, $output, $question);
+        }
 
         if ($installSampleData) {
             $filesystem = new Filesystem();
@@ -601,7 +602,7 @@ HELP;
                         $this->config['installationFolder'] . '/_temp_demo_data/magento_*sample_data*sql'
                     );
                     $db = $this->config['db'];
-                    /* @var $db PDO */
+                    /* @var PDO $db */
                     if (isset($sampleDataSqlFile[0])) {
                         if (OperatingSystem::isProgramInstalled('mysql')) {
                             $exec = 'mysql '
@@ -675,106 +676,127 @@ HELP;
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     *
-     * @return array
      * @throws InvalidArgumentException parameter mismatch (e.g. base-url components like hostname)
      * @throws RuntimeException
      */
     protected function installMagento(InputInterface $input, OutputInterface $output)
     {
         $this->getApplication()->setAutoExit(false);
-        /** @var $dialog \Symfony\Component\Console\Helper\DialogHelper */
-        $dialog = $this->getHelper('dialog');
+        /** @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
 
         $defaults = $this->commandConfig['installation']['defaults'];
 
         $useDefaultConfigParams = $this->_parseBoolOption($input->getOption('useDefaultConfigParams'));
 
-        $sessionSave = $useDefaultConfigParams ? $defaults['session_save'] : $dialog->ask(
-            $output,
-            '<question>Please enter the session save:</question> <comment>[' .
-            $defaults['session_save'] . ']</comment>: ',
-            $defaults['session_save']
-        );
+        if ($useDefaultConfigParams) {
+            $sessionSave = $defaults['session_save'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the session save:</question> <comment>[' . $defaults['session_save'] . ']</comment>: ',
+                $defaults['session_save']
+            );
+            $sessionSave = $dialog->ask($input, $output, $question);
+        }
 
-        $adminFrontname = $useDefaultConfigParams ? $defaults['admin_frontname'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin frontname:</question> <comment>[' .
-            $defaults['admin_frontname'] . ']</comment> ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_frontname']
-        );
+        if ($useDefaultConfigParams) {
+            $adminFrontname = $defaults['admin_frontname'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin frontname:</question> <comment>[' . $defaults['admin_frontname'] . ']</comment> ',
+                $defaults['admin_frontname']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminFrontname = $dialog->ask($input, $output, $question);
+        }
 
-        $currency = $useDefaultConfigParams ? $defaults['currency'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the default currency code:</question> <comment>[' .
-            $defaults['currency'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['currency']
-        );
+        if ($useDefaultConfigParams) {
+            $currency = $defaults['currency'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the default currency code:</question> <comment>[' . $defaults['currency'] . ']</comment>: ',
+                $defaults['currency']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $currency = $dialog->ask($input, $output, $question);
+        }
 
-        $locale = $useDefaultConfigParams ? $defaults['locale'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the locale code:</question> <comment>[' . $defaults['locale'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['locale']
-        );
+        if ($useDefaultConfigParams) {
+            $locale = $defaults['locale'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the locale code:</question> <comment>[' . $defaults['locale'] . ']</comment>: ',
+                $defaults['locale']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $locale = $dialog->ask($input, $output, $question);
+        }
 
-        $timezone = $useDefaultConfigParams ? $defaults['timezone'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the timezone:</question> <comment>[' . $defaults['timezone'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['timezone']
-        );
+        if ($useDefaultConfigParams) {
+            $timezone = $defaults['timezone'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the timezone:</question> <comment>[' . $defaults['timezone'] . ']</comment>: ',
+                $defaults['timezone']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $timezone = $dialog->ask($input, $output, $question);
+        }
 
-        $adminUsername = $useDefaultConfigParams ? $defaults['admin_username'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin username:</question> <comment>[' .
-            $defaults['admin_username'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_username']
-        );
+        if ($useDefaultConfigParams) {
+            $adminUsername = $defaults['admin_username'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin username:</question> <comment>[' . $defaults['admin_username'] . ']</comment>: ',
+                $defaults['admin_username']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminUsername = $dialog->ask($input, $output, $question);
+        }
 
-        $adminPassword = $useDefaultConfigParams ? $defaults['admin_password'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin password:</question> <comment>[' .
-            $defaults['admin_password'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_password']
-        );
+        if ($useDefaultConfigParams) {
+            $adminPassword = $defaults['admin_password'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin password:</question> <comment>[' . $defaults['admin_password'] . ']</comment>: ',
+                $defaults['admin_password']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminPassword = $dialog->ask($input, $output, $question);
+        }
 
-        $adminFirstname = $useDefaultConfigParams ? $defaults['admin_firstname'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin\'s firstname:</question> <comment>[' .
-            $defaults['admin_firstname'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_firstname']
-        );
+        if ($useDefaultConfigParams) {
+            $adminFirstname = $defaults['admin_firstname'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin\'s firstname:</question> <comment>[' . $defaults['admin_firstname'] . ']</comment>: ',
+                $defaults['admin_firstname']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminFirstname = $dialog->ask($input, $output, $question);
+        }
 
-        $adminLastname = $useDefaultConfigParams ? $defaults['admin_lastname'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin\'s lastname:</question> <comment>[' .
-            $defaults['admin_lastname'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_lastname']
-        );
+        if ($useDefaultConfigParams) {
+            $adminLastname = $defaults['admin_lastname'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin\'s lastname:</question> <comment>[' . $defaults['admin_lastname'] . ']</comment>: ',
+                $defaults['admin_lastname']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminLastname = $dialog->ask($input, $output, $question);
+        }
 
-        $adminEmail = $useDefaultConfigParams ? $defaults['admin_email'] : $dialog->askAndValidate(
-            $output,
-            '<question>Please enter the admin\'s email:</question> <comment>[' .
-            $defaults['admin_email'] . ']</comment>: ',
-            $this->notEmptyCallback,
-            false,
-            $defaults['admin_email']
-        );
+        if ($useDefaultConfigParams) {
+            $adminEmail = $defaults['admin_email'];
+        } else {
+            $question = new Question(
+                '<question>Please enter the admin\'s email:</question> <comment>[' . $defaults['admin_email'] . ']</comment>: ',
+                $defaults['admin_email']
+            );
+            $question->setValidator($this->notEmptyCallback);
+            $adminEmail = $dialog->ask($input, $output, $question);
+        }
 
         $validateBaseUrl = function ($input) {
             if (!preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $input)) {
@@ -796,11 +818,9 @@ HELP;
             if (!$input->isInteractive()) {
                 throw new InvalidArgumentException('Installation base url is mandatory, use --baseUrl.');
             }
-            $baseUrl = $dialog->askAndValidate(
-                $output,
-                '<question>Please enter the base url:</question> ',
-                $validateBaseUrl
-            );
+            $question = new Question('<question>Please enter the base url: </question>');
+            $question->setValidator($validateBaseUrl);
+            $baseUrl = $dialog->ask($input, $output, $question);
         }
         $validateBaseUrl($baseUrl);
         $baseUrl = rtrim($baseUrl, '/') . '/'; // normalize baseUrl
@@ -867,9 +887,6 @@ HELP;
 
         $this->runInstallScriptCommand($output, $this->config['installationFolder'], $argv);
 
-        /* @var $dialog DialogHelper */
-        $dialog = $this->getHelper('dialog');
-
         /**
          * Htaccess file
          */
@@ -878,13 +895,14 @@ HELP;
 
             if ($this->_parseBoolOption($input->getOption('replaceHtaccessFile'))) {
                 $replaceHtaccessFile = true;
-            } elseif ($dialog->askConfirmation(
-                $output,
-                '<question>Write BaseURL to .htaccess file?</question> <comment>[n]</comment>: ',
-                false
-            )
-            ) {
-                $replaceHtaccessFile = true;
+            }
+
+            if (!$replaceHtaccessFile) {
+                $question = new ConfirmationQuestion(
+                    '<question>Write BaseURL to .htaccess file?</question> <comment>[n]</comment>: ',
+                    false
+                );
+                $replaceHtaccessFile = $dialog->ask($input, $output, $question);
             }
 
             if ($replaceHtaccessFile) {
@@ -959,7 +977,7 @@ HELP;
                 ->ignoreUnreadableDirs(true)
                 ->in([$varFolder, $mediaFolder]);
             foreach ($finder as $dir) {
-                @chmod($dir->getRealpath(), 0777);
+                @chmod($dir->getRealPath(), 0777);
             }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');

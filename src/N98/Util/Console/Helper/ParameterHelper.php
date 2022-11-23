@@ -2,27 +2,26 @@
 
 namespace N98\Util\Console\Helper;
 
-use JsonSchema\Validator;
-use Mage;
-use Symfony\Component\Console\Helper\QuestionHelper;
-use Symfony\Component\Console\Question\ChoiceQuestion;
-use Symfony\Component\Console\Question\Question;
-use Symfony\Component\Validator\Constraints\Collection;
-use Symfony\Component\Validator\Constraints\NotBlank;
-use Symfony\Component\Validator\Constraints\Email;
-use Symfony\Component\Validator\Constraints\Regex;
-use Symfony\Component\Validator\Constraints\Length;
 use Exception;
 use InvalidArgumentException;
+use JsonSchema\Validator;
+use Mage;
 use Mage_Core_Model_Website;
 use N98\Util\Validator\FakeMetadataFactory;
 use RuntimeException;
-use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Helper\Helper as AbstractHelper;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Translation\Translator;
 use Symfony\Component\Validator\Constraints;
+use Symfony\Component\Validator\Constraints\Collection;
+use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Constraints\Regex;
 use Symfony\Component\Validator\ConstraintValidatorFactory;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
@@ -65,14 +64,14 @@ class ParameterHelper extends AbstractHelper
         $argumentName = 'store',
         $withDefaultStore = false
     ) {
-        /* @var $storeManager \Mage_Core_Model_App */
+        /* @var \Mage_Core_Model_App $storeManager */
         $storeManager = Mage::app();
 
         try {
             if ($input->getArgument($argumentName) === null) {
                 throw new RuntimeException('No store given');
             }
-            /** @var $store \Mage_Core_Model_Store */
+            /** @var \Mage_Core_Model_Store $store */
             $store = $storeManager->getStore($input->getArgument($argumentName));
         } catch (Exception $e) {
             if (!$input->isInteractive()) {
@@ -128,7 +127,7 @@ class ParameterHelper extends AbstractHelper
      */
     public function askWebsite(InputInterface $input, OutputInterface $output, $argumentName = 'website')
     {
-        /* @var $storeManager \Mage_Core_Model_App */
+        /* @var \Mage_Core_Model_App $storeManager */
         $storeManager = Mage::app();
 
         $website = null;
@@ -137,7 +136,7 @@ class ParameterHelper extends AbstractHelper
 
         if ($hasArgument) {
             try {
-                /* @var $website Mage_Core_Model_Website */
+                /* @var Mage_Core_Model_Website $website */
                 $website = $storeManager->getWebsite($argumentValue);
                 return $website;
             } catch (Exception $e) {
@@ -159,7 +158,7 @@ class ParameterHelper extends AbstractHelper
             return $websites[$typeInput - 1];
         };
 
-        $websiteId = $this->askAndValidate($output, $question, $callback);
+        $websiteId = $this->askAndValidate($input, $output, $question, $callback);
         $website = $storeManager->getWebsite($websiteId);
 
         return $website;
@@ -174,7 +173,7 @@ class ParameterHelper extends AbstractHelper
         $i = 0;
         $websites = [];
         $question = [];
-        /* @var $website Mage_Core_Model_Website */
+        /* @var Mage_Core_Model_Website $website */
         foreach ($storeManager->getWebsites() as $website) {
             $position = $i++;
             $websites[$position] = $website->getId();
@@ -252,7 +251,7 @@ class ParameterHelper extends AbstractHelper
     }
 
     /**
-     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param InputInterface $input
      * @param OutputInterface $output
      * @param string $name
      * @param string $value

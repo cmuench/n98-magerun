@@ -2,9 +2,10 @@
 
 namespace N98\Magento\Command;
 
-use Mage_Core_Model_App;
 use Mage;
+use Mage_Core_Model_App;
 use Mage_Core_Model_Store;
+use N98\Util\Console\Helper\ParameterHelper;
 use N98\Util\Exec;
 use N98\Util\OperatingSystem;
 use RuntimeException;
@@ -34,8 +35,7 @@ class OpenBrowserCommand extends AbstractMagentoCommand
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @throws RuntimeException
-     * @return int|void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -44,7 +44,10 @@ class OpenBrowserCommand extends AbstractMagentoCommand
             return 0;
         }
 
-        $store = $this->getHelper('parameter')->askStore($input, $output, 'store', true);
+        /** @var ParameterHelper $parameterHelper */
+        $parameterHelper = $this->getHelper('parameter');
+
+        $store = $parameterHelper->askStore($input, $output, 'store', true);
         if ($store->getId() == Mage_Core_Model_App::ADMIN_STORE_ID) {
             $adminFrontName = (string) Mage::getConfig()->getNode('admin/routers/adminhtml/args/frontName');
             $url = rtrim($store->getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB), '/') . '/' . $adminFrontName;
