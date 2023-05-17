@@ -79,33 +79,32 @@ class ParameterHelper extends AbstractHelper
             }
 
             $stores = [];
-            $question = [];
-            $i = 0;
+            $choices = [];
 
             foreach ($storeManager->getStores($withDefaultStore) as $store) {
-                $stores[$i] = $store->getId();
-                $question[] = sprintf(
-                    '<comment>[%d]</comment> %s - %s' . PHP_EOL,
-                    ++$i,
+                $stores[] = $store->getId();
+                $choices[] = sprintf(
+                    '%s - %s',
                     $store->getCode(),
                     $store->getName()
                 );
             }
 
             if (count($stores) > 1) {
-                $question[] = '<question>Please select a store: </question>';
-                $storeId = $this->askAndValidate(
-                    $input,
-                    $output,
-                    $question,
-                    function ($typeInput) use ($stores) {
-                        if (!isset($stores[$typeInput - 1])) {
-                            throw new InvalidArgumentException('Invalid store');
-                        }
-
-                        return $stores[$typeInput - 1];
+                $validator = function ($typeInput) use ($stores) {
+                    if (!isset($stores[$typeInput])) {
+                        throw new InvalidArgumentException('Invalid store');
                     }
-                );
+
+                    return $stores[$typeInput];
+                };
+
+                /* @var QuestionHelper $dialog */
+                $dialog = new QuestionHelper();
+                $question = new ChoiceQuestion('<question>Please select a store:</question> ', $choices);
+                $question->setValidator($validator);
+
+                $storeId = $dialog->ask($input, $output, $question);
             } else {
                 // only one store view available -> take it
                 $storeId = $stores[0];
@@ -149,16 +148,20 @@ class ParameterHelper extends AbstractHelper
             return $storeManager->getWebsite($websites[0]);
         }
 
-        $question[] = '<question>Please select a website: </question>';
-        $callback = function ($typeInput) use ($websites) {
-            if (!isset($websites[$typeInput - 1])) {
+        $validator = function ($typeInput) use ($websites) {
+            if (!isset($websites[$typeInput])) {
                 throw new InvalidArgumentException('Invalid website');
             }
 
-            return $websites[$typeInput - 1];
+            return $websites[$typeInput];
         };
 
-        $websiteId = $this->askAndValidate($input, $output, $question, $callback);
+        /* @var QuestionHelper $dialog */
+        $dialog = new QuestionHelper();
+        $question = new ChoiceQuestion('<question>Please select a website:</question> ', $choices);
+        $question->setValidator($validator);
+
+        $websiteId = $dialog->ask($input, $output, $question);
         $website = $storeManager->getWebsite($websiteId);
 
         return $website;
@@ -272,7 +275,7 @@ class ParameterHelper extends AbstractHelper
             }
         }
 
-        $question = '<question>' . ucfirst($name) . ': </question>';
+        $question = '<question>' . ucfirst($name) . ':</question> ';
 
         $value = $this->askAndValidate(
             $input,

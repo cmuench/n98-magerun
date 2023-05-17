@@ -20,14 +20,13 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
 
 /**
  * Class AbstractMagentoCommand
  *
  * @package N98\Magento\Command
- *
- * @method Application getApplication() getApplication()
  */
 abstract class AbstractMagentoCommand extends Command
 {
@@ -591,27 +590,32 @@ abstract class AbstractMagentoCommand extends Command
 
     /**
      * @param array $entries zero-indexed array of entries (represented by strings) to select from
+     * @param InputInterface $input
      * @param OutputInterface $output
      * @param string $question
      * @return mixed
      */
-    protected function askForArrayEntry(array $entries, OutputInterface $output, $question)
+    protected function askForArrayEntry(array $entries, InputInterface $input, OutputInterface $output, $question)
     {
-        $dialog = '';
-        foreach ($entries as $key => $entry) {
-            $dialog .= '<comment>[' . ($key + 1) . ']</comment> ' . $entry . "\n";
-        }
-        $dialog .= "<question>{$question}</question> ";
-
-        $selected = $this->getHelper('dialog')->askAndValidate($output, $dialog, function ($typeInput) use ($entries) {
-            if (!in_array($typeInput, range(1, count($entries)))) {
+        $validator = function ($typeInput) use ($entries) {
+            if (!in_array($typeInput, range(0, count($entries)))) {
                 throw new InvalidArgumentException('Invalid type');
             }
 
             return $typeInput;
-        });
+        };
 
-        return $entries[$selected - 1];
+        /* @var QuestionHelper $dialog */
+        $dialog = $this->getHelper('question');
+        $question = new ChoiceQuestion(
+            "<question>{$question}</question>",
+            $entries
+        );
+        $question->setValidator($validator);
+
+        $selected = $dialog->ask($input, $output, $question);
+
+        return $entries[$selected];
     }
 
     /**
@@ -625,6 +629,6 @@ abstract class AbstractMagentoCommand extends Command
             $message = ucfirst($argument);
         }
 
-        return sprintf('<question>%s:</question>', $message);
+        return sprintf('<question>%s:</question> ', $message);
     }
 }
