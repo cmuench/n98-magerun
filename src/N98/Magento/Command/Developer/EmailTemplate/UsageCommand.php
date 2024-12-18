@@ -71,11 +71,21 @@ class UsageCommand extends AbstractMagentoCommand
             $configPaths = $template->getSystemConfigPathsWhereUsedCurrently();
 
             if (!(is_countable($configPaths) ? count($configPaths) : 0)) {
-                $configPaths[] = ['scope'    => 'Unused', 'scope_id' => 'Unused', 'path'     => 'Unused'];
+                $configPaths[] = [
+                    'scope'    => 'Unused',
+                    'scope_id' => 'Unused',
+                    'path'     => 'Unused',
+                ];
             }
 
             foreach ($configPaths as $configPath) {
-                $return[] = ['id'            => $this->sanitizeEmailProperty($template->getId()), 'Template Code' => $this->sanitizeEmailProperty($template->getTemplateCode()), 'Scope'         => $this->sanitizeEmailProperty($configPath['scope']), 'Scope Id'      => $this->sanitizeEmailProperty($configPath['scope_id']), Path::class          => $this->sanitizeEmailProperty($configPath['path'])];
+                $return[] = [
+                    'id'            => $this->sanitizeEmailProperty((string) $template->getId()),
+                    'Template Code' => $this->sanitizeEmailProperty($template->getTemplateCode()),
+                    'Scope'         => $this->sanitizeEmailProperty($configPath['scope']),
+                    'Scope Id'      => $this->sanitizeEmailProperty($configPath['scope_id']),
+                    'Path'          => $this->sanitizeEmailProperty($configPath['path']),
+                ];
             }
         }
 
