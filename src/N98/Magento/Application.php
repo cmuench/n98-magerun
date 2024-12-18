@@ -144,7 +144,14 @@ class Application extends BaseApplication
     public function __construct($autoloader = null)
     {
         $this->autoloader = $autoloader;
-        parent::__construct(self::APP_NAME, self::APP_VERSION);
+
+        $appName = self::APP_NAME;
+
+        if (strpos($appName, 'application_name') !== false) {
+            $appName = 'n98-magerun';
+        }
+
+        parent::__construct($appName, self::APP_VERSION);
     }
 
     /**
