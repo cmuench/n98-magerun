@@ -39,7 +39,7 @@ class Application extends BaseApplication
     /**
      * @var string
      */
-    public const APP_NAME = 'n98-magerun';
+    public const APP_NAME = '@application_name@';
 
     /**
      * @var string

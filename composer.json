@@ -37,7 +37,6 @@
         "composer/composer": "^2.7",
         "friendsofphp/php-cs-fixer": "^3.4",
         "mikey179/vfsstream": "^1.6",
-        "phing/phing": "~2.17.0",
         "phpunit/phpunit": "^9",
         "rector/rector": "^1.0.0",
         "seld/phar-utils": "~1.2.0"
