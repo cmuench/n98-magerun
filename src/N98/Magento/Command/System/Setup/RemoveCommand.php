@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Setup;
 
 use InvalidArgumentException;
+use Mage;
 use Mage_Core_Model_Resource;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Remove setup ommand
+ * Remove setup command
  *
  * @package N98\Magento\Command\System\Setup
  *
@@ -18,10 +22,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class RemoveCommand extends AbstractSetupCommand
 {
-    /**
-     * Set up CLI options
-     */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('sys:setup:remove')
@@ -30,31 +31,24 @@ class RemoveCommand extends AbstractSetupCommand
             ->setDescription('Remove module setup resource entry');
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->detectMagento($output, true);
+        $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $moduleName = $this->getModule($input);
         $setupName = $input->getArgument('setup');
         $moduleSetups = $this->getModuleSetupResources($moduleName);
 
-        if (empty($moduleSetups)) {
+        if ($moduleSetups === []) {
             $output->writeln(sprintf('No setup resources found for module: "%s"', $moduleName));
-
-            return 0;
+            return Command::FAILURE;
         }
 
         if ($setupName === 'all') {
-            foreach ($moduleSetups as $setupCode => $setup) {
+            foreach (array_keys($moduleSetups) as $setupCode) {
                 $this->removeSetupResource($moduleName, $setupCode, $output);
             }
         } elseif (array_key_exists($setupName, $moduleSetups)) {
@@ -62,40 +56,43 @@ class RemoveCommand extends AbstractSetupCommand
         } else {
             throw new InvalidArgumentException(sprintf('Error no setup found with the name: "%s"', $setupName));
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param string $moduleName
-     * @param string $setupResource
-     * @param OutputInterface $output
-     */
-    public function removeSetupResource($moduleName, $setupResource, OutputInterface $output)
+    public function removeSetupResource(string $moduleName, string $setupResource, OutputInterface $output): void
     {
-        /** @var Mage_Core_Model_Resource $model */
-        $model = $this->_getModel('core/resource');
-        $writeAdapter = $model->getConnection('core_write');
+        $mageCoreModelResource = $this->getMageCoreResource();
+        $writeAdapter = $mageCoreModelResource->getConnection('core_write');
         if (!$writeAdapter) {
             throw new RuntimeException('Database not configured');
         }
-        $table = $model->getTableName('core_resource');
+
+        $table = $mageCoreModelResource->getTableName('core_resource');
 
         if ($writeAdapter->delete($table, ['code = ?' => $setupResource]) > 0) {
             $output->writeln(
                 sprintf(
                     '<info>Successfully removed setup resource: "%s" from module: "%s" </info>',
                     $setupResource,
-                    $moduleName
-                )
+                    $moduleName,
+                ),
             );
         } else {
             $output->writeln(
                 sprintf(
                     '<error>No entry was found for setup resource: "%s" in module: "%s" </error>',
                     $setupResource,
-                    $moduleName
-                )
+                    $moduleName,
+                ),
             );
         }
+    }
+
+    public function getMageCoreResource(): Mage_Core_Model_Resource
+    {
+        /** @var Mage_Core_Model_Resource $model */
+        $model = Mage::getModel('core/resource');
+        return $model;
     }
 }

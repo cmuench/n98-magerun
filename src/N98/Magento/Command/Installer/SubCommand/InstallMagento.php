@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer\SubCommand;
 
+use Closure;
 use Exception;
+use InvalidArgumentException;
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
 use N98\Util\Exec;
 use N98\Util\OperatingSystem;
@@ -17,29 +21,20 @@ use Symfony\Component\Console\Question\Question;
  */
 class InstallMagento extends AbstractSubCommand
 {
-    /**
-     * @deprecated since since 1.3.1; Use constant from Exec-Utility instead
-     * @see Exec::CODE_CLEAN_EXIT
-     */
-    const EXEC_STATUS_OK = 0;
+    public const MAGENTO_INSTALL_SCRIPT_PATH = 'install.php';
 
-    const MAGENTO_INSTALL_SCRIPT_PATH = 'install.php';
+    protected Closure $notEmptyCallback;
 
     /**
-     * @var \Closure
-     */
-    protected $notEmptyCallback;
-
-    /**
-     * @return void
      * @throws Exception
      */
-    public function execute()
+    public function execute(): void
     {
         $this->notEmptyCallback = function ($input) {
             if (empty($input)) {
-                throw new \InvalidArgumentException('Please enter a value');
+                throw new InvalidArgumentException('Please enter a value');
             }
+
             return $input;
         };
 
@@ -54,151 +49,160 @@ class InstallMagento extends AbstractSubCommand
         $question = new Question(
             sprintf(
                 '<question>Please enter the session save:</question> <comment>[%s]</comment>: ',
-                $defaults['session_save']
+                $defaults['session_save'],
             ),
-            $defaults['session_save']
+            $defaults['session_save'],
         );
 
         $sessionSave = $useDefaultConfigParams ? $defaults['session_save'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the admin/backend frontname:</question> <comment>[%s]</comment> ',
-                $defaults['admin_frontname']
+                $defaults['admin_frontname'],
             ),
-            $defaults['admin_frontname']
+            $defaults['admin_frontname'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminFrontname = $useDefaultConfigParams ? $defaults['admin_frontname'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the default currency code:</question> <comment>[%s]</comment>: ',
-                $defaults['currency']
+                $defaults['currency'],
             ),
-            $defaults['currency']
+            $defaults['currency'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $currency = $useDefaultConfigParams ? $defaults['currency'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the locale code:</question> <comment>[%s]</comment>: ',
-                $defaults['locale']
+                $defaults['locale'],
             ),
-            $defaults['locale']
+            $defaults['locale'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $locale = $useDefaultConfigParams ? $defaults['locale'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the timezone:</question> <comment>[%s]</comment>: ',
-                $defaults['timezone']
+                $defaults['timezone'],
             ),
-            $defaults['timezone']
+            $defaults['timezone'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $timezone = $useDefaultConfigParams ? $defaults['timezone'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the admin username:</question> <comment>[%s]</comment>: ',
-                $defaults['admin_username']
+                $defaults['admin_username'],
             ),
-            $defaults['admin_username']
+            $defaults['admin_username'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminUsername = $useDefaultConfigParams ? $defaults['admin_username'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 '<question>Please enter the admin password:</question> <comment>[%s]</comment>: ',
-                $defaults['admin_password']
+                $defaults['admin_password'],
             ),
-            $defaults['admin_password']
+            $defaults['admin_password'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminPassword = $useDefaultConfigParams ? $defaults['admin_password'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 "<question>Please enter the admin's firstname:</question> <comment>[%s]</comment>: ",
-                $defaults['admin_firstname']
+                $defaults['admin_firstname'],
             ),
-            $defaults['admin_firstname']
+            $defaults['admin_firstname'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminFirstname = $useDefaultConfigParams ? $defaults['admin_firstname'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 "<question>Please enter the admin's lastname:</question> <comment>[%s]</comment>: ",
-                $defaults['admin_lastname']
+                $defaults['admin_lastname'],
             ),
-            $defaults['admin_lastname']
+            $defaults['admin_lastname'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminLastname = $useDefaultConfigParams ? $defaults['admin_lastname'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $question = new Question(
             sprintf(
                 "<question>Please enter the admin's email:</question> <comment>[%s]</comment>: ",
-                $defaults['admin_email']
+                $defaults['admin_email'],
             ),
-            $defaults['admin_email']
+            $defaults['admin_email'],
         );
         $question->setValidator($this->notEmptyCallback);
+
         $adminEmail = $useDefaultConfigParams ? $defaults['admin_email'] : $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
 
         $validateBaseUrl = function ($url) {
-            if (!preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url)) {
-                throw new \InvalidArgumentException('Please enter a valid URL');
+            if (in_array(preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url), [0, false], true)) {
+                throw new InvalidArgumentException('Please enter a valid URL');
             }
 
             if (parse_url($url, \PHP_URL_HOST) === 'localhost') {
-                throw new \InvalidArgumentException(
-                    'localhost cause problems! Please use 127.0.0.1 or another hostname'
+                throw new InvalidArgumentException(
+                    'localhost cause problems! Please use 127.0.0.1 or another hostname',
                 );
             }
 
@@ -207,10 +211,11 @@ class InstallMagento extends AbstractSubCommand
 
         $question = new Question('<question>Please enter the base url:</question> ');
         $question->setValidator($validateBaseUrl);
+
         $baseUrl = $this->input->getOption('baseUrl') ?? $questionHelper->ask(
             $this->input,
             $this->output,
-            $question
+            $question,
         );
         $baseUrl = rtrim($baseUrl, '/') . '/'; // normalize baseUrl
 
@@ -220,6 +225,7 @@ class InstallMagento extends AbstractSubCommand
         if ($sessionSave === 'file') {
             $sessionSave = 'files';
         }
+
         $this->_getDefaultSessionFolder($sessionSave);
 
         $argv = [
@@ -245,7 +251,7 @@ class InstallMagento extends AbstractSubCommand
         ];
 
         $dbPass = $this->config->getString('db_pass');
-        if (!empty($dbPass)) {
+        if ($dbPass !== '' && $dbPass !== '0') {
             $argv['db_pass'] = $dbPass;
         }
 
@@ -253,10 +259,12 @@ class InstallMagento extends AbstractSubCommand
             if (isset($defaults['encryption_key']) && $defaults['encryption_key'] != '') {
                 $argv['encryption_key'] = $defaults['encryption_key'];
             }
+
             if ($defaults['use_secure'] != '') {
                 $argv['use_secure'] = $defaults['use_secure'];
                 $argv['secure_base_url'] = str_replace('http://', 'https://', $baseUrl);
             }
+
             if ($defaults['use_rewrites'] != '') {
                 $argv['use_rewrites'] = $defaults['use_rewrites'];
             }
@@ -267,33 +275,23 @@ class InstallMagento extends AbstractSubCommand
         $this->runInstallScriptCommand($this->output, $this->config->getString('installationFolder'), $argv);
     }
 
-    /**
-     * @param $sessionSave
-     */
-    protected function _getDefaultSessionFolder($sessionSave)
+    protected function _getDefaultSessionFolder(string $sessionSave): void
     {
-        /**
+        /*
          * Try to create session folder
          */
         $defaultSessionFolder = $this->config->getString('installationFolder') . '/var/session';
-        if ($sessionSave == 'files' && !is_dir($defaultSessionFolder)) {
-            if (!mkdir($defaultSessionFolder) && !is_dir($defaultSessionFolder)) {
-                throw new RuntimeException(sprintf('Directory "%s" was not created', $defaultSessionFolder));
-            }
+        if ($sessionSave === 'files' && !is_dir($defaultSessionFolder) && (!mkdir($defaultSessionFolder) && !is_dir($defaultSessionFolder))) {
+            throw new RuntimeException(sprintf('Directory "%s" was not created', $defaultSessionFolder));
         }
     }
 
-    /**
-     * @return string
-     */
-    protected function _prepareDbHost()
+    protected function _prepareDbHost(): string
     {
         $dbHost = $this->config->getString('db_host');
 
         if ($this->config->getInt('db_port') !== 3306) {
-            $dbHost .= ':' . (string)$this->config->getInt('db_port');
-
-            return $dbHost;
+            return $dbHost . (':' . $this->config->getInt('db_port'));
         }
 
         return $dbHost;
@@ -302,12 +300,9 @@ class InstallMagento extends AbstractSubCommand
     /**
      * Invoke Magento PHP install script
      *
-     * @param OutputInterface $output
-     * @param string $installationFolder folder where magento is installed in, must exists setup script in
-     * @param array $argv
-     * @return void
+     * @param string $installationFolder folder where magento is installed in, must exist setup script in
      */
-    private function runInstallScriptCommand(OutputInterface $output, $installationFolder, array $argv)
+    private function runInstallScriptCommand(OutputInterface $output, string $installationFolder, array $argv): void
     {
         $installArgs = '';
         foreach ($argv as $argName => $argValue) {
@@ -316,7 +311,7 @@ class InstallMagento extends AbstractSubCommand
             } elseif (is_bool($argValue)) {
                 $installArgs .= '--' . $argName . ' ' . (int) $argValue . ' ';
             } else {
-                $installArgs .= '--' . $argName . ' ' . escapeshellarg($argValue) . ' ';
+                $installArgs .= '--' . $argName . ' ' . escapeshellarg((string) $argValue) . ' ';
             }
         }
 
@@ -326,29 +321,30 @@ class InstallMagento extends AbstractSubCommand
             '%s -ddisplay_startup_errors=1 -ddisplay_errors=1 -derror_reporting=-1 -f %s -- %s',
             OperatingSystem::getPhpBinary(),
             escapeshellarg($installationFolder . '/' . self::MAGENTO_INSTALL_SCRIPT_PATH),
-            $installArgs
+            $installArgs,
         );
 
         $output->writeln('<comment>' . $installCommand . '</comment>');
-        $installException = null;
-        $installationOutput = null;
+        $installationOutput = '';
         $returnStatus = null;
         try {
             Exec::run($installCommand, $installationOutput, $returnStatus);
-        } catch (Exception $installException) {
+        } catch (Exception $exception) {
             /* fall-through intended */
         }
 
-        if (isset($installException) || $returnStatus !== Exec::CODE_CLEAN_EXIT) {
+        $exception = $exception ?? null;
+        if (isset($exception) || $returnStatus !== Exec::CODE_CLEAN_EXIT) {
             $this->getCommand()->getApplication()->setAutoExit(true);
             throw new RuntimeException(
                 sprintf('Installation failed (Exit code %s). %s', $returnStatus, $installationOutput),
                 1,
-                $installException
+                $exception,
             );
         }
+
         $output->writeln('<info>Successfully installed Magento</info>');
-        $encryptionKey = trim(substr(strstr($installationOutput, ':'), 1));
+        $encryptionKey = trim(substr((string) strstr($installationOutput, ':'), 1));
         $output->writeln('<comment>Encryption Key:</comment> <info>' . $encryptionKey . '</info>');
     }
 }

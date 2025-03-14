@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer;
 
 use Exception;
@@ -9,6 +11,7 @@ use N98\Magento\Command\Developer\Console\Psy\Shell;
 use N98\Util\Unicode\Charset;
 use Psy\Configuration;
 use Psy\Output\ShellOutput;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -19,45 +22,39 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ConsoleCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:console')
             ->setDescription(
-                'Opens PHP interactive shell with initialized Mage::app() <comment>(Experimental)</comment>'
+                'Opens PHP interactive shell with initialized Mage::app() <comment>(Experimental)</comment>',
             )
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $initialized = false;
         try {
             $this->detectMagento($output);
             $initialized = $this->initMagento();
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
             // do nothing
         }
 
-        $consoleOutput = new ShellOutput();
-        $config = new Configuration();
-        $shell = new Shell($config);
+        $shellOutput = new ShellOutput();
+        $configuration = new Configuration();
+        $shell = new Shell($configuration);
 
         if ($initialized) {
             $ok = Charset::convertInteger(Charset::UNICODE_CHECKMARK_CHAR);
             $edition = $this->getApplication()->isMagentoEnterprise() ? 'EE' : 'CE';
-            $consoleOutput->writeln(
+            $shellOutput->writeln(
                 '<fg=black;bg=green>Magento ' . Mage::getVersion() . ' ' . $edition .
-                ' initialized.</fg=black;bg=green> ' . $ok
+                ' initialized.</fg=black;bg=green> ' . $ok,
             );
         } else {
-            $consoleOutput->writeln('<fg=black;bg=yellow>Magento is not initialized.</fg=black;bg=yellow>');
+            $shellOutput->writeln('<fg=black;bg=yellow>Magento is not initialized.</fg=black;bg=yellow>');
         }
 
         $help = <<<'help_WRAP'
@@ -66,9 +63,9 @@ At the prompt, type <comment>help</comment> for some help.
 To exit the shell, type <comment>^D</comment>.
 help_WRAP;
 
-        $consoleOutput->writeln($help);
+        $shellOutput->writeln($help);
+        $shell->run($input, $shellOutput);
 
-        $shell->run($input, $consoleOutput);
-        return 0;
+        return Command::SUCCESS;
     }
 }

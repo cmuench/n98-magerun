@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Category\Create;
 
 use Mage;
@@ -10,43 +12,46 @@ use Symfony\Component\Console\Question\Question;
 use N98\Magento\Command\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class DummyCommandTest extends TestCase
+final class DummyCommandTest extends TestCase
 {
     public function testExecute()
     {
         $application = $this->getApplication();
         $application->add(new DummyCommand());
+
         $command = $application->find('category:create:dummy');
         $commandTester = new CommandTester($command);
 
         $commandTester->execute(
-            ['command'                    => $command->getName(), 'store-id'                   => 1, 'children-categories-number' => 1, 'category-name-prefix'       => 'My Awesome Category', 'category-number'            => 1]
+            ['command'                    => $command->getName(), 'store-id'                   => 1, 'children-categories-number' => 1, 'category-name-prefix'       => 'My Awesome Category', 'category-number'            => 1],
         );
 
-        self::assertMatchesRegularExpression('/CATEGORY: \'My Awesome Category (.+)\' WITH ID: \'(.+)\' CREATED!/', $commandTester->getDisplay());
-        self::assertMatchesRegularExpression('/CATEGORY CHILD: \'My Awesome Category (.+)\' WITH ID: \'(.+)\' CREATED!/', $commandTester->getDisplay());
+        $this->assertMatchesRegularExpression("/CATEGORY: 'My Awesome Category (.+)' WITH ID: '(.+)' CREATED!/", $commandTester->getDisplay());
+        $this->assertMatchesRegularExpression("/CATEGORY CHILD: 'My Awesome Category (.+)' WITH ID: '(.+)' CREATED!/", $commandTester->getDisplay());
 
         // Check if the category is created correctly
         $match_parent = '';
         $match_child = '';
-        preg_match('/CATEGORY: \'My Awesome Category (.+)\' WITH ID: \'(.+)\' CREATED!/', $commandTester->getDisplay(), $match_parent);
-        self::assertTrue($this->checkifCategoryExist($match_parent[2]));
-        preg_match('/CATEGORY CHILD: \'My Awesome Category (.+)\' WITH ID: \'(.+)\' CREATED!/', $commandTester->getDisplay(), $match_child);
-        self::assertTrue($this->checkifCategoryExist($match_child[2]));
+        preg_match("/CATEGORY: 'My Awesome Category (.+)' WITH ID: '(.+)' CREATED!/", $commandTester->getDisplay(), $match_parent);
+        $this->assertTrue($this->checkifCategoryExist($match_parent[2]));
+        preg_match("/CATEGORY CHILD: 'My Awesome Category (.+)' WITH ID: '(.+)' CREATED!/", $commandTester->getDisplay(), $match_child);
+        $this->assertTrue($this->checkifCategoryExist($match_child[2]));
 
         // Delete category created
         $this->deleteMagentoCategory($match_parent[2]);
         $this->deleteMagentoCategory($match_child[2]);
     }
 
-    protected function checkifCategoryExist($_category_id)
+    private function checkifCategoryExist($_category_id)
     {
         if (!is_null(Mage::getModel('catalog/category')->load($_category_id)->getName())) {
             return true;
         }
+
+        return null;
     }
 
-    protected function deleteMagentoCategory($_category_id)
+    private function deleteMagentoCategory($_category_id)
     {
         Mage::getModel('catalog/category')->load($_category_id)->delete();
     }
@@ -55,6 +60,7 @@ class DummyCommandTest extends TestCase
     {
         $application = $this->getApplication();
         $application->add(new DummyCommand());
+
         $command = $application->find('category:create:dummy');
 
         $dialog = $this->getMockBuilder(QuestionHelper::class)
@@ -68,7 +74,7 @@ class DummyCommandTest extends TestCase
             ->with(
                 self::isInstanceOf(InputInterface::class),
                 self::isInstanceOf(OutputInterface::class),
-                self::isInstanceOf(Question::class)
+                self::isInstanceOf(Question::class),
             )
             ->willReturn(1);
 
@@ -78,7 +84,7 @@ class DummyCommandTest extends TestCase
             ->with(
                 self::isInstanceOf(InputInterface::class),
                 self::isInstanceOf(OutputInterface::class),
-                self::isInstanceOf(Question::class)
+                self::isInstanceOf(Question::class),
             )
             ->willReturn(0);
 
@@ -88,7 +94,7 @@ class DummyCommandTest extends TestCase
             ->with(
                 self::isInstanceOf(InputInterface::class),
                 self::isInstanceOf(OutputInterface::class),
-                self::isInstanceOf(Question::class)
+                self::isInstanceOf(Question::class),
             )
             ->willReturn('My Awesome Category ');
 
@@ -98,7 +104,7 @@ class DummyCommandTest extends TestCase
             ->with(
                 self::isInstanceOf(InputInterface::class),
                 self::isInstanceOf(OutputInterface::class),
-                self::isInstanceOf(Question::class)
+                self::isInstanceOf(Question::class),
             )
             ->willReturn(0);
 
@@ -110,13 +116,13 @@ class DummyCommandTest extends TestCase
         $commandTester->execute(
             [
                 'command'                    => $command->getName(),
-            ]
+            ],
         );
 
         $arguments = $commandTester->getInput()->getArguments();
-        self::assertArrayHasKey('store-id', $arguments);
-        self::assertArrayHasKey('children-categories-number', $arguments);
-        self::assertArrayHasKey('category-name-prefix', $arguments);
-        self::assertArrayHasKey('category-number', $arguments);
+        $this->assertArrayHasKey('store-id', $arguments);
+        $this->assertArrayHasKey('children-categories-number', $arguments);
+        $this->assertArrayHasKey('category-name-prefix', $arguments);
+        $this->assertArrayHasKey('category-number', $arguments);
     }
 }

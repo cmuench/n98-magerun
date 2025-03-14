@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Media;
 
 use N98\Magento\Command\TestCase;
@@ -11,11 +13,12 @@ class DumpCommand extends TestCase
     {
         $application = $this->getApplication();
         $application->add(new DumpCommand());
+
         $command = $this->getApplication()->find('media:dump');
 
         $commandTester = new CommandTester($command);
         $commandTester->execute(
-            ['command'  => $command->getName(), 'filename' => tempnam('media_'), '--strip'  => true]
+            ['command'  => $command->getName(), 'filename' => tempnam('media_'), '--strip'  => true],
         );
 
         self::assertContains('Compress directory', $commandTester->getDisplay());

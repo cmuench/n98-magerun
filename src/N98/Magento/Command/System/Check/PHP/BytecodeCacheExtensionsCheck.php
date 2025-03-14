@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check\PHP;
 
 use N98\Magento\Command\CommandConfigAware;
@@ -14,43 +16,35 @@ use N98\Magento\Command\System\Check\SimpleCheck;
  */
 class BytecodeCacheExtensionsCheck implements SimpleCheck, CommandConfigAware
 {
-    /**
-     * @var array
-     */
-    protected $_commandConfig;
+    protected array $_commandConfig;
 
-    /**
-     * @param ResultCollection $results
-     */
-    public function check(ResultCollection $results)
+    public function check(ResultCollection $resultCollection): void
     {
-        $result = $results->createResult();
+        $result = $resultCollection->createResult();
 
         $bytecopdeCacheExtensions = $this->_commandConfig['php']['bytecode-cache-extensions'];
         $bytecodeCacheExtensionLoaded = false;
         $bytecodeCacheExtension = null;
-        foreach ($bytecopdeCacheExtensions as $ext) {
-            if (extension_loaded($ext)) {
-                $bytecodeCacheExtension = $ext;
+        foreach ($bytecopdeCacheExtensions as $bytecopdeCacheExtension) {
+            if (extension_loaded($bytecopdeCacheExtension)) {
+                $bytecodeCacheExtension = $bytecopdeCacheExtension;
                 $bytecodeCacheExtensionLoaded = true;
                 break;
             }
         }
+
         $result->setStatus($bytecodeCacheExtensionLoaded ? Result::STATUS_OK : Result::STATUS_WARNING);
         if ($result->isValid()) {
-            $result->setMessage("<info>Bytecode Cache <comment>$bytecodeCacheExtension</comment> found.</info>");
+            $result->setMessage(sprintf('<info>Bytecode Cache <comment>%s</comment> found.</info>', $bytecodeCacheExtension));
         } else {
             $result->setMessage(
                 "<error>No Bytecode-Cache found!</error> <comment>It's recommended to install anyone of " .
-                implode(', ', $bytecopdeCacheExtensions) . '.</comment>'
+                implode(', ', $bytecopdeCacheExtensions) . '.</comment>',
             );
         }
     }
 
-    /**
-     * @param array $commandConfig
-     */
-    public function setCommandConfig(array $commandConfig)
+    public function setCommandConfig(array $commandConfig): void
     {
         $this->_commandConfig = $commandConfig;
     }

@@ -1,15 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Theme;
 
-use DateTime;
+use Carbon\Carbon;
 use N98\JUnitXml\Document as JUnitXmlDocument;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 /**
  * Find duplicate theme command
@@ -18,7 +22,7 @@ use Symfony\Component\Finder\Finder;
  */
 class DuplicatesCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:theme:duplicates')
@@ -27,21 +31,18 @@ class DuplicatesCommand extends AbstractMagentoCommand
                 'originalTheme',
                 InputArgument::OPTIONAL,
                 'Original theme to comapre. Default is "base/default"',
-                'base/default'
+                'base/default',
             )
             ->addOption(
                 'log-junit',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Log duplicates in JUnit XML format to defined file.'
+                'Log duplicates in JUnit XML format to defined file.',
             )
             ->setDescription('Find duplicate files (templates, layout, locale, etc.) between two themes.')
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -49,19 +50,13 @@ class DuplicatesCommand extends AbstractMagentoCommand
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $time = microtime(true);
         $this->detectMagento($output);
 
         $referenceFiles = $this->getChecksums(
-            $this->_magentoRootFolder . '/app/design/frontend/' . $input->getArgument('originalTheme')
+            $this->_magentoRootFolder . '/app/design/frontend/' . $input->getArgument('originalTheme'),
         );
 
         $themeFolder = $this->_magentoRootFolder . '/app/design/frontend/' . $input->getArgument('theme');
@@ -77,23 +72,18 @@ HELP;
         }
 
         if ($input->getOption('log-junit')) {
-            $this->logJUnit($input, $duplicates, $input->getOption('log-junit'), microtime($time) - $time);
+            $this->logJUnit($input, $duplicates, $input->getOption('log-junit'), microtime(true) - $time);
+        } elseif ($duplicates === []) {
+            $output->writeln('<info>No duplicates were found</info>');
         } else {
-            if (count($duplicates) === 0) {
-                $output->writeln('<info>No duplicates were found</info>');
-            } else {
-                $output->writeln($duplicates);
-            }
+            $output->writeln($duplicates);
         }
 
-        return 0;
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param string $baseFolder
-     * @return array
-     */
-    protected function getChecksums($baseFolder)
+
+    protected function getChecksums(string $baseFolder): array
     {
         $finder = Finder::create();
         $finder
@@ -105,7 +95,7 @@ HELP;
             ->in($baseFolder);
         $checksums = [];
         foreach ($finder as $file) {
-            /* @var \Symfony\Component\Finder\SplFileInfo $file */
+            /** @var SplFileInfo $file */
             if (file_exists($file->getRealPath())) {
                 $checksums[$file->getRelativePathname()] = md5_file($file->getRealPath());
             }
@@ -114,30 +104,24 @@ HELP;
         return $checksums;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param array          $duplicates
-     * @param string         $filename
-     * @param float          $duration
-     */
-    protected function logJUnit($input, array $duplicates, $filename, $duration)
+    protected function logJUnit(InputInterface $input, array $duplicates, string $filename, float $duration): void
     {
         $document = new JUnitXmlDocument();
-        $suite = $document->addTestSuite();
-        $suite->setName('n98-magerun: ' . $this->getName());
-        $suite->setTimestamp(new DateTime());
-        $suite->setTime($duration);
+        $testSuiteElement = $document->addTestSuite();
+        $testSuiteElement->setName('n98-magerun: ' . $this->getName());
+        $testSuiteElement->setTimestamp(Carbon::now());
+        $testSuiteElement->setTime($duration);
 
-        $testCase = $suite->addTestCase();
-        $testCase->setName(
+        $testCaseElement = $testSuiteElement->addTestCase();
+        $testCaseElement->setName(
             'Magento Duplicate Theme Files: ' . $input->getArgument('theme') . ' | ' .
-            $input->getArgument('originalTheme')
+            $input->getArgument('originalTheme'),
         );
-        $testCase->setClassname('ConflictsCommand');
+        $testCaseElement->setClassname('ConflictsCommand');
         foreach ($duplicates as $duplicate) {
-            $testCase->addFailure(
+            $testCaseElement->addFailure(
                 sprintf('Duplicate File: %s', $duplicate),
-                'MagentoThemeDuplicateFileException'
+                'MagentoThemeDuplicateFileException',
             );
         }
 

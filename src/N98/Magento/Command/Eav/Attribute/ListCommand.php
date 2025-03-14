@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Eav\Attribute;
 
 use Exception;
 use Mage;
 use Mage_Eav_Model_Entity_Type;
+use Mage_Eav_Model_Resource_Entity_Attribute_Collection;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -17,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('eav:attribute:list')
@@ -28,23 +32,19 @@ class ListCommand extends AbstractMagentoCommand
             ->addFormatOption();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
+
         $table = [];
+        /** @var Mage_Eav_Model_Resource_Entity_Attribute_Collection $attributesCollection */
         $attributesCollection = Mage::getResourceModel('eav/entity_attribute_collection');
         $attributesCollection->setOrder('attribute_code', 'asc');
-        foreach ($attributesCollection as $attribute) {
-            $entityType = $this->_getEntityType($attribute);
+        foreach ($attributesCollection as $attributeCollection) {
+            $entityType = $this->_getEntityType($attributeCollection);
 
             /**
              * Filter by type
@@ -56,16 +56,17 @@ class ListCommand extends AbstractMagentoCommand
             }
 
             $row = [];
-            $row[] = $attribute->getAttributeCode();
-            $row[] = $attribute->getId();
+            $row[] = $attributeCollection->getAttributeCode();
+            $row[] = $attributeCollection->getId();
             $row[] = $entityType;
-            $row[] = $attribute->getFrontendLabel();
+            $row[] = $attributeCollection->getFrontendLabel();
 
             if ($input->getOption('add-source')) {
-                $row[] = $attribute->getSourceModel() ?: '';
+                $row[] = $attributeCollection->getSourceModel() ?: '';
             }
+
             if ($input->getOption('add-backend')) {
-                $row[] = $attribute->getBackendType();
+                $row[] = $attributeCollection->getBackendType();
             }
 
             $table[] = $row;
@@ -79,6 +80,7 @@ class ListCommand extends AbstractMagentoCommand
         if ($input->getOption('add-source')) {
             $headers[] = 'source';
         }
+
         if ($input->getOption('add-backend')) {
             $headers[] = 'backend_type';
         }
@@ -87,14 +89,14 @@ class ListCommand extends AbstractMagentoCommand
         $tableHelper
             ->setHeaders($headers)
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
     /**
      * @param $attribute
-     * @return null|string
      */
-    protected function _getEntityType($attribute)
+    protected function _getEntityType($attribute): ?string
     {
         $entityTypeCode = '';
         try {
@@ -102,7 +104,7 @@ class ListCommand extends AbstractMagentoCommand
             if ($entityType instanceof Mage_Eav_Model_Entity_Type) {
                 $entityTypeCode = $entityType->getEntityTypeCode();
             }
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
         }
 
         return $entityTypeCode;

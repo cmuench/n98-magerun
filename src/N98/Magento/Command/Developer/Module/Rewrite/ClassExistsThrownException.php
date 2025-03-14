@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Rewrite;
 
 use RuntimeException;
@@ -13,6 +15,4 @@ use RuntimeException;
  *
  * @author Tom Klingenberg (https://github.com/ktomk)
  */
-class ClassExistsThrownException extends RuntimeException
-{
-}
+class ClassExistsThrownException extends RuntimeException {}

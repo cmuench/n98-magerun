@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Theme;
 
 use Mage;
+use Mage_Core_Model_Design_Package;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -14,7 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:theme:list')
@@ -23,23 +27,18 @@ class ListCommand extends AbstractMagentoCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $packages = $this->getThemes();
         $table = [];
         foreach ($packages as $package => $themes) {
             foreach ($themes as $theme) {
-                $table[] = [($package ? $package . '/' : '') . $theme];
+                $table[] = [($package !== 0 && ($package !== '' && $package !== '0') ? $package . '/' : '') . $theme];
             }
         }
 
@@ -47,14 +46,14 @@ class ListCommand extends AbstractMagentoCommand
         $tableHelper
             ->setHeaders(['Theme'])
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @return array
-     */
-    protected function getThemes()
+    protected function getThemes(): array
     {
-        return Mage::getModel('core/design_package')->getThemeList();
+        /** @var Mage_Core_Model_Design_Package $model */
+        $model = Mage::getModel('core/design_package');
+        return $model->getThemeList();
     }
 }

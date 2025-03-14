@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Database;
 
 use InvalidArgumentException;
 use N98\Util\Exec;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -16,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ImportCommand extends AbstractDatabaseCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('db:import')
@@ -28,7 +31,7 @@ class ImportCommand extends AbstractDatabaseCommand
                 'optimize',
                 null,
                 InputOption::VALUE_NONE,
-                'Convert verbose INSERTs to short ones before import (not working with compression)'
+                'Convert verbose INSERTs to short ones before import (not working with compression)',
             )
             ->addOption('drop', null, InputOption::VALUE_NONE, 'Drop and recreate database before import')
             ->addOption('stdin', null, InputOption::VALUE_NONE, 'Import data from STDIN rather than file')
@@ -36,9 +39,6 @@ class ImportCommand extends AbstractDatabaseCommand
             ->setDescription('Imports database with mysql cli client according to database defined in local.xml');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         $help = <<<HELP
@@ -51,37 +51,41 @@ HELP;
             . $this->getCompressionHelp() . PHP_EOL;
     }
 
-    /**
-     * @return bool
-     */
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return Exec::allowed();
     }
 
     /**
      * Optimize a dump by converting single INSERTs per line to INSERTs with multiple lines
-     * @param $fileName
-     * @return string temporary filename
      */
-    protected function optimize($fileName)
+    protected function optimize(string $fileName): string
     {
-        $in = fopen($fileName, 'r');
         $result = tempnam(sys_get_temp_dir(), 'dump') . '.sql';
+
+        $in = fopen($fileName, 'r');
+        if (!$in) {
+            return $result;
+        }
+
         $out = fopen($result, 'w');
+        if (!$out) {
+            return $result;
+        }
 
         fwrite($out, 'SET autocommit=0;' . "\n");
         $currentTable = '';
-        $maxlen = 8 * 1024 * 1024; // 8 MB
+        $maxLen = 8 * 1024 * 1024; // 8 MB
         $len = 0;
         while ($line = fgets($in)) {
-            if (strtolower(substr($line, 0, 11)) == 'insert into') {
+            if (strtolower(substr($line, 0, 11)) === 'insert into') {
                 preg_match('/^insert into `(.*)` \([^)]*\) values (.*);/i', $line, $m);
 
                 if (count($m) < 3) { // fallback for very long lines or other cases where the preg_match fails
-                    if ($currentTable != '') {
+                    if ($currentTable !== '') {
                         fwrite($out, ";\n");
                     }
+
                     fwrite($out, $line);
                     $currentTable = '';
                     continue;
@@ -90,10 +94,11 @@ HELP;
                 $table = $m[1];
                 $values = $m[2];
 
-                if ($table != $currentTable || ($len > $maxlen - 1000)) {
-                    if ($currentTable != '') {
+                if ($table !== $currentTable || ($len > $maxLen - 1000)) {
+                    if ($currentTable !== '') {
                         fwrite($out, ";\n");
                     }
+
                     $currentTable = $table;
                     $insert = 'INSERT INTO `' . $table . '` VALUES ' . $values;
                     fwrite($out, $insert);
@@ -103,10 +108,11 @@ HELP;
                     $len += strlen($values) + 1;
                 }
             } else {
-                if ($currentTable != '') {
+                if ($currentTable !== '') {
                     fwrite($out, ";\n");
                     $currentTable = '';
                 }
+
                 fwrite($out, $line);
             }
         }
@@ -121,18 +127,12 @@ HELP;
         return $result;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectDbSettings($output);
 
         $this->writeSection($output, 'Import MySQL Database');
-        $dbHelper = $this->getDatabaseHelper();
+        $databaseHelper = $this->getDatabaseHelper();
 
         $fileName = $this->checkFilename($input);
 
@@ -142,41 +142,43 @@ HELP;
             if ($fileName === '-') {
                 throw new InvalidArgumentException('Option --optimize not compatible with STDIN import');
             }
+
             if ($input->getOption('only-command')) {
                 throw new InvalidArgumentException('Options --only-command and --optimize are not compatible');
             }
+
             if ($input->getOption('compression')) {
                 throw new InvalidArgumentException('Options --compression and --optimize are not compatible');
             }
+
             $output->writeln('<comment>Optimizing <info>' . $fileName . '</info> to temporary file');
             $fileName = $this->optimize($fileName);
         }
 
         // create import command
-        $exec = 'mysql ' . $dbHelper->getMysqlClientToolConnectionString();
+        $exec = 'mysql ' . $databaseHelper->getMysqlClientToolConnectionString();
         if ($fileName !== '-') {
             $exec = $compressor->getDecompressingCommand($exec, $fileName);
         }
 
         if ($input->getOption('only-command')) {
             $output->writeln($exec);
-            return 0;
-        } else {
-            if ($input->getOption('only-if-empty')
-                && (is_countable($dbHelper->getTables()) ? count($dbHelper->getTables()) : 0) > 0
-            ) {
-                $output->writeln('<comment>Skip import. Database is not empty</comment>');
+            return Command::SUCCESS;
+        }
 
-                return 0;
-            }
+        if ($input->getOption('only-if-empty')
+            && (is_countable($databaseHelper->getTables()) ? count($databaseHelper->getTables()) : 0) > 0) {
+            $output->writeln('<comment>Skip import. Database is not empty</comment>');
+            return Command::SUCCESS;
         }
 
         if ($input->getOption('drop')) {
-            $dbHelper->dropDatabase($output);
-            $dbHelper->createDatabase($output);
+            $databaseHelper->dropDatabase($output);
+            $databaseHelper->createDatabase($output);
         }
+
         if ($input->getOption('drop-tables')) {
-            $dbHelper->dropTables($output);
+            $databaseHelper->dropTables($output);
         }
 
         $this->doImport($output, $fileName, $exec);
@@ -184,41 +186,34 @@ HELP;
         if ($input->getOption('optimize')) {
             unlink($fileName);
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
     /**
-     * @param InputInterface $input
-     *
-     * @return mixed
      * @throws InvalidArgumentException
      */
-    protected function checkFilename(InputInterface $input)
+    protected function checkFilename(InputInterface $input): string
     {
         if ($input->getOption('stdin')) {
             return '-';
         }
+
         $fileName = $input->getArgument('filename');
         if (!file_exists($fileName)) {
             throw new InvalidArgumentException('File does not exist');
         }
+
         return $fileName;
     }
 
-    /**
-     * @param OutputInterface $output
-     * @param string          $fileName
-     * @param string          $exec
-     *
-     * @return void
-     */
-    protected function doImport(OutputInterface $output, $fileName, $exec)
+    protected function doImport(OutputInterface $output, string $fileName, string $exec): void
     {
         $returnValue = null;
         $commandOutput = null;
         $output->writeln(
             '<comment>Importing SQL dump <info>' . $fileName . '</info> to database <info>'
-            . $this->dbSettings['dbname'] . '</info>'
+            . $this->dbSettings['dbname'] . '</info>',
         );
 
         Exec::run($exec, $commandOutput, $returnValue);
@@ -226,6 +221,7 @@ HELP;
         if ($returnValue != 0) {
             $output->writeln('<error>' . $commandOutput . '</error>');
         }
+
         $output->writeln('<info>Finished</info>');
     }
 }

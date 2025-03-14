@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Cron;
 
 use AppendIterator;
 use IteratorIterator;
 use Mage;
+use Mage_Core_Exception;
 use Mage_Core_Model_Config_Element;
 use Mage_Cron_Exception;
 use Mage_Cron_Model_Schedule;
@@ -25,13 +28,14 @@ abstract class AbstractCronCommand extends AbstractMagentoCommand
     {
         $table = [];
 
-        $jobs = $this->getJobConfigElements();
+        $jobConfigElements = $this->getJobConfigElements();
 
-        foreach ($jobs as $name => $job) {
+        foreach ($jobConfigElements as $name => $job) {
             $model = null;
             if (isset($job->run->model)) {
                 $model = $job->run->model;
             }
+
             $table[$name] = ['Job' => $name, 'Model' => $model] + $this->getSchedule($job);
         }
 
@@ -41,18 +45,18 @@ abstract class AbstractCronCommand extends AbstractMagentoCommand
     }
 
     /**
-     * @param  Mage_Core_Model_Config_Element $job
-     * @return array of five cron values,keyed by 'm', 'h', 'D', 'M' and 'WD'
+     * @return array|false of five cron values,keyed by 'm', 'h', 'D', 'M' and 'WD'
+     * @throws Mage_Core_Exception
      */
-    protected function getSchedule(Mage_Core_Model_Config_Element $job)
+    protected function getSchedule(Mage_Core_Model_Config_Element $mageCoreModelConfigElement)
     {
         $keys = ['m', 'h', 'D', 'M', 'WD'];
         $expr = null;
 
-        if (isset($job->schedule->config_path)) {
-            $expr = Mage::getStoreConfig((string) $job->schedule->config_path);
-        } elseif (isset($job->schedule->cron_expr)) {
-            $expr = $job->schedule->cron_expr;
+        if (isset($mageCoreModelConfigElement->schedule->config_path)) {
+            $expr = Mage::getStoreConfig((string) $mageCoreModelConfigElement->schedule->config_path);
+        } elseif (isset($mageCoreModelConfigElement->schedule->cron_expr)) {
+            $expr = $mageCoreModelConfigElement->schedule->cron_expr;
         }
 
         if ($cronExpressions = $this->parseCronExpression($expr)) {
@@ -64,15 +68,12 @@ abstract class AbstractCronCommand extends AbstractMagentoCommand
 
     /**
      * Get job configuration from XML and database. Expression priority is given to the database.
-     *
-     * @return AppendIterator|Mage_Core_Model_Config_Element[]
      */
-    private function getJobConfigElements()
+    private function getJobConfigElements(): AppendIterator
     {
         $jobs = new AppendIterator();
 
         $paths = ['crontab/jobs', 'default/crontab/jobs'];
-
         foreach ($paths as $path) {
             if ($jobConfig = Mage::getConfig()->getNode($path)) {
                 $jobs->append(new IteratorIterator($jobConfig->children()));
@@ -87,11 +88,13 @@ abstract class AbstractCronCommand extends AbstractMagentoCommand
      *
      * uses magento 1 internal parser of cron expressions
      *
-     * @return array with five values (zero-indexed) or FALSE in case it does not exists.
+     * @param mixed $expr
+     * @return array|false with five values (zero-indexed) or FALSE in case it does not exist.
+     * @throws Mage_Core_Exception
      */
     private function parseCronExpression($expr)
     {
-        if ((string)$expr === 'always') {
+        if ((string) $expr === 'always') {
             return array_fill(0, 5, '*');
         }
 
@@ -100,7 +103,7 @@ abstract class AbstractCronCommand extends AbstractMagentoCommand
 
         try {
             $schedule->setCronExpr($expr);
-        } catch (Mage_Cron_Exception $e) {
+        } catch (Mage_Cron_Exception $mageCronException) {
             return false;
         }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check\Settings;
 
 use Mage;
@@ -17,40 +19,32 @@ use ReflectionMethod;
  */
 abstract class CheckAbstract implements StoreCheck
 {
-    private $storeConfigPaths = [];
+    private array $storeConfigPaths = [];
 
     final public function __construct()
     {
         $this->initConfigPaths();
     }
 
-    abstract protected function initConfigPaths();
+    abstract protected function initConfigPaths(): void;
 
-    /**
-     * @param string $name
-     * @param string $configPath
-     */
-    protected function registerStoreConfigPath($name, $configPath)
+    protected function registerStoreConfigPath(string $name, string $configPath): void
     {
         $this->storeConfigPaths[$name] = $configPath;
     }
 
-    /**
-     * @param ResultCollection       $results
-     * @param \Mage_Core_Model_Store $store
-     *
-     */
-    public function check(ResultCollection $results, Mage_Core_Model_Store $store)
+
+    public function check(ResultCollection $resultCollection, Mage_Core_Model_Store $mageCoreModelStore): void
     {
-        $result = $results->createResult();
+        $result = $resultCollection->createResult();
 
-        $typedParams = ['result' => $result, 'store'  => $store];
+        $typedParams = ['result' => $result, 'store'  => $mageCoreModelStore];
 
-        $paramValues = $this->getParamValues($store, $typedParams);
+        $paramValues = $this->getParamValues($mageCoreModelStore, $typedParams);
 
         $name = 'checkSettings';
-        $method = new ReflectionMethod($this, $name);
-        $parameters = $method->getParameters();
+        $reflectionMethod = new ReflectionMethod($this, $name);
+        $parameters = $reflectionMethod->getParameters();
 
         $arguments = [];
         foreach ($parameters as $parameter) {
@@ -59,9 +53,9 @@ abstract class CheckAbstract implements StoreCheck
 
             // create named parameter from type-hint if applicable
             if ($paramClass) {
-                foreach ($typedParams as $object) {
-                    if ($paramClass->isSubclassOf(get_class($object))) {
-                        $paramValues[$paramName] = $object;
+                foreach ($typedParams as $typedParam) {
+                    if ($paramClass->isSubclassOf(get_class($typedParam))) {
+                        $paramValues[$paramName] = $typedParam;
                         break;
                     }
                 }
@@ -72,26 +66,23 @@ abstract class CheckAbstract implements StoreCheck
             $arguments[] = $paramValues[$paramName];
         }
 
-        call_user_func_array([$this, $name], $arguments);
+        $callable = [$this, $name];
+        call_user_func_array($callable, $arguments);
     }
 
     /**
-     * @param \Mage_Core_Model_Store $store
-     * @param array                  $typedParams
      *
      * @return array
      */
-    private function getParamValues(Mage_Core_Model_Store $store, array $typedParams)
+    private function getParamValues(Mage_Core_Model_Store $mageCoreModelStore, array $typedParams)
     {
         $paramValues = $this->storeConfigPaths;
 
         foreach ($paramValues as $name => $path) {
-            $value = Mage::getStoreConfig($path, $store);
+            $value = Mage::getStoreConfig($path, $mageCoreModelStore);
             $paramValues[$name] = $value;
         }
 
-        $paramValues = $typedParams + $paramValues;
-
-        return $paramValues;
+        return $typedParams + $paramValues;
     }
 }

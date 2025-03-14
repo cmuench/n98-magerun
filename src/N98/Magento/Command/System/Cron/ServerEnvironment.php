@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 /**
  * Created by PhpStorm.
  * User: mot
@@ -22,28 +25,14 @@ use UnexpectedValueException;
  */
 class ServerEnvironment
 {
-    /**
-     * @var array
-     */
-    private $backup;
+    private ?array $backup = null;
 
-    /**
-     * @var array
-     */
-    private $keys;
+    private array $keys = ['SCRIPT_NAME', 'SCRIPT_FILENAME'];
 
-    public function __construct()
+    public function initalize(): void
     {
-        $this->keys = ['SCRIPT_NAME', 'SCRIPT_FILENAME'];
-    }
-
-    /**
-     *
-     */
-    public function initalize()
-    {
-        if (isset($this->backup)) {
-            throw new BadMethodCallException('Environment already backed up, can\'t initialize any longer');
+        if ($this->backup !== null) {
+            throw new BadMethodCallException("Environment already backed up, can't initialize any longer");
         }
 
         if (!is_array($GLOBALS['argv'])) {
@@ -59,10 +48,10 @@ class ServerEnvironment
         }
     }
 
-    public function reset()
+    public function reset(): void
     {
-        if (false === isset($this->backup)) {
-            throw new BadMethodCallException('Environment not yet backed up, initalize first, can\'t reset');
+        if ($this->backup === null) {
+            throw new BadMethodCallException("Environment not yet backed up, initialize first, can't reset");
         }
 
         foreach ($this->backup as $key => $value) {

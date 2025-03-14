@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Dependencies;
 
 use InvalidArgumentException;
@@ -18,18 +20,23 @@ class FromCommand extends AbstractCommand
      * @var string
      */
     public const COMMAND_NAME = 'dev:module:dependencies:from';
+
     public const COMMAND_DESCRIPTION = 'Show list of modules which depend on %s module';
+
     public const COMMAND_SECTION_TITLE_TEXT = 'List of modules which depend on %s module';
+
     public const COMMAND_NO_RESULTS_TEXT = 'No modules depend on %s module';
+
     /**#@-*/
 
     /**
      * @inheritdoc
      */
-    protected function findModuleDependencies($moduleName, $recursive = false)
+    protected function findModuleDependencies(string $moduleName, bool $recursive = false): array
     {
-        if ($this->modules === null) {
-            $this->modules = Mage::app()->getConfig()->getNode('modules')->asArray();
+        if (is_null($this->modules)) {
+            $modulesNode = Mage::app()->getConfig()->getNode('modules');
+            $this->modules = $modulesNode ? $modulesNode->asArray() : [];
         }
 
         if (!isset($this->modules[$moduleName])) {
@@ -47,7 +54,7 @@ class FromCommand extends AbstractCommand
             if ($recursive) {
                 $dependencies = array_merge(
                     $dependencies,
-                    $this->findModuleDependencies($dependencyName, $recursive)
+                    $this->findModuleDependencies($dependencyName, $recursive),
                 );
             }
         }

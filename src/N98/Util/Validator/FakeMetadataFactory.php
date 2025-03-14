@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util\Validator;
 
 use Symfony\Component\Validator\Exception\NoSuchMetadataException;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
+use Symfony\Component\Validator\Mapping\MetadataInterface;
 
 /**
  * Class FakeMetadataFactory
@@ -13,19 +16,16 @@ use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
  */
 class FakeMetadataFactory implements MetadataFactoryInterface
 {
-    /**
-     * @var array
-     */
-    protected $metadatas = [];
+    protected array $metadatas = [];
 
     /**
      * Returns whether the class is able to return metadata for the given value.
      *
      * @param mixed $value Some value
      *
-     * @return bool Whether metadata can be returned for that value
+     * @return MetadataInterface Whether metadata can be returned for that value
      */
-    public function getMetadataFor($value)
+    public function getMetadataFor($value): MetadataInterface
     {
         if (is_object($value)) {
             $value = get_class($value);
@@ -49,7 +49,7 @@ class FakeMetadataFactory implements MetadataFactoryInterface
      *
      * @return bool Whether metadata can be returned for that value
      */
-    public function hasMetadataFor($value)
+    public function hasMetadataFor($value): bool
     {
         if (is_object($value)) {
             $value = get_class($value);
@@ -62,11 +62,8 @@ class FakeMetadataFactory implements MetadataFactoryInterface
         return isset($this->metadatas[$value]);
     }
 
-    /**
-     * @param \Symfony\Component\Validator\Mapping\ClassMetadata $metadata
-     */
-    public function addMetadata(ClassMetadata $metadata)
+    public function addMetadata(ClassMetadata $classMetadata): void
     {
-        $this->metadatas[$metadata->getClassName()] = $metadata;
+        $this->metadatas[$classMetadata->getClassName()] = $classMetadata;
     }
 }

@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Database;
 
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +17,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
  */
 class DropCommand extends AbstractDatabaseCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('db:drop')
@@ -24,9 +27,6 @@ class DropCommand extends AbstractDatabaseCommand
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -36,37 +36,32 @@ The configured user in app/etc/local.xml must have "DROP" privileges.
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectDbSettings($output);
 
-        $dialog = $this->getQuestionHelper();
-        $dbHelper = $this->getDatabaseHelper();
+        $questionHelper = $this->getQuestionHelper();
+        $databaseHelper = $this->getDatabaseHelper();
 
         if ($input->getOption('force')) {
             $shouldDrop = true;
         } else {
-            $shouldDrop = $dialog->ask(
+            $shouldDrop = $questionHelper->ask(
                 $input,
                 $output,
                 new ConfirmationQuestion('<question>Really drop database ' . $this->dbSettings['dbname'] .
-                    ' ?</question> <comment>[n]</comment>: ', false)
+                    ' ?</question> <comment>[n]</comment>: ', false),
             );
         }
 
         if ($shouldDrop) {
             if ($input->getOption('tables')) {
-                $dbHelper->dropTables($output);
+                $databaseHelper->dropTables($output);
             } else {
-                $dbHelper->dropDatabase($output);
+                $databaseHelper->dropDatabase($output);
             }
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

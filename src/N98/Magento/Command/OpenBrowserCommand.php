@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command;
 
 use Mage;
@@ -8,6 +10,7 @@ use Mage_Core_Model_Store;
 use N98\Util\Exec;
 use N98\Util\OperatingSystem;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -19,7 +22,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class OpenBrowserCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('open-browser')
@@ -28,24 +31,16 @@ class OpenBrowserCommand extends AbstractMagentoCommand
         ;
     }
 
-    /**
-     * @return bool
-     */
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return Exec::allowed();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $parameterHelper = $this->getParameterHelper();
@@ -57,43 +52,39 @@ class OpenBrowserCommand extends AbstractMagentoCommand
         } else {
             $url = $store->getBaseUrl(Mage_Core_Model_Store::URL_TYPE_LINK) . '?___store=' . $store->getCode();
         }
+
         $output->writeln('Opening URL <comment>' . $url . '</comment> in browser');
 
         $opener = $this->resolveOpenerCommand($output);
         Exec::run(escapeshellcmd($opener . ' ' . $url));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param OutputInterface $output
-     * @return string
-     */
-    private function resolveOpenerCommand(OutputInterface $output)
+    private function resolveOpenerCommand(OutputInterface $output): string
     {
         $opener = '';
         if (OperatingSystem::isMacOs()) {
             $opener = 'open';
         } elseif (OperatingSystem::isWindows()) {
             $opener = 'start';
-        } else {
+        } elseif (exec('which xdg-open')) {
             // Linux
-            if (exec('which xdg-open')) {
-                $opener = 'xdg-open';
-            } elseif (exec('which gnome-open')) {
-                $opener = 'gnome-open';
-            } elseif (exec('which kde-open')) {
-                $opener = 'kde-open';
-            }
+            $opener = 'xdg-open';
+        } elseif (exec('which gnome-open')) {
+            $opener = 'gnome-open';
+        } elseif (exec('which kde-open')) {
+            $opener = 'kde-open';
         }
 
-        if (empty($opener)) {
+        if ($opener === '') {
             throw new RuntimeException('No opener command like xdg-open, gnome-open, kde-open was found.');
         }
 
         if (OutputInterface::VERBOSITY_DEBUG <= $output->getVerbosity()) {
             $message = sprintf('open command is "%s"', $opener);
             $output->writeln(
-                '<debug>' . $message . '</debug>'
+                '<debug>' . $message . '</debug>',
             );
         }
 

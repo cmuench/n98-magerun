@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer\SubCommand;
 
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
-use N98\Util\Database;
 use N98\Util\Exec;
 use N98\Util\Filesystem;
 use N98\Util\StringTyped;
+use RuntimeException;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Process\Process;
 use WpOrg\Requests\Requests;
@@ -18,10 +20,7 @@ use WpOrg\Requests\Requests;
  */
 class InstallSampleData extends AbstractSubCommand
 {
-    /**
-     * @return void
-     */
-    public function execute()
+    public function execute(): void
     {
         if ($this->input->getOption('noDownload')) {
             return;
@@ -34,7 +33,7 @@ class InstallSampleData extends AbstractSubCommand
             : $questionHelper->ask(
                 $this->input,
                 $this->output,
-                new ConfirmationQuestion('<question>Install sample data?</question> <comment>[yes]</comment>: ', true)
+                new ConfirmationQuestion('<question>Install sample data?</question> <comment>[yes]</comment>: ', true),
             );
 
         if (!$installSampleData) {
@@ -47,7 +46,7 @@ class InstallSampleData extends AbstractSubCommand
         $flag = $this->getOptionalBooleanOption(
             'installSampleData',
             'Install sample data?',
-            'no'
+            'no',
         );
 
         if (!$flag) {
@@ -70,10 +69,6 @@ class InstallSampleData extends AbstractSubCommand
         }
     }
 
-    /**
-     * @param array $demoPackageData
-     * @return void
-     */
     private function installSampleData(array $demoPackageData): void
     {
         $filesystem = new Filesystem();
@@ -97,7 +92,7 @@ class InstallSampleData extends AbstractSubCommand
         ];
         $response = Requests::get($demoPackageData['dist']['url'], [], $options);
         if (!$response->success) {
-            throw new \RuntimeException('Cannot download sample data file: ' . $response->status_code);
+            throw new RuntimeException('Cannot download sample data file: ' . $response->status_code);
         }
 
         $sampleDataFileContent = $response->body;
@@ -107,21 +102,21 @@ class InstallSampleData extends AbstractSubCommand
         if (is_dir($expandedFolder)) {
             $filesystem->recursiveCopy(
                 $expandedFolder,
-                $this->config['installationFolder']
+                $this->config['installationFolder'],
             );
             $filesystem->recursiveRemoveDirectory($expandedFolder);
         }
 
         // Install sample data
         $sampleDataSqlFile = glob(
-            $this->config['installationFolder'] . '/magento_*sample_data*sql'
+            $this->config['installationFolder'] . '/magento_*sample_data*sql',
         );
 
-        $dbHelper = $this->command->getDatabaseHelper();
+        $databaseHelper = $this->command->getDatabaseHelper();
 
         if (isset($sampleDataSqlFile[0])) {
             $this->output->writeln('<info>Import sample data db data</info>');
-            $exec = 'mysql ' . $dbHelper->getMysqlClientToolConnectionString() . ' < ' . $sampleDataSqlFile[0];
+            $exec = 'mysql ' . $databaseHelper->getMysqlClientToolConnectionString() . ' < ' . $sampleDataSqlFile[0];
 
             Exec::run($exec, $commandOutput, $returnValue);
 
@@ -141,12 +136,8 @@ class InstallSampleData extends AbstractSubCommand
 
     /**
      * Extract file and return path to directory
-     *
-     * @param $type
-     * @param string $sampleDataFileContent
-     * @return string
      */
-    private function extractFile($type, string $sampleDataFileContent): string
+    private function extractFile(string $type, string $sampleDataFileContent): string
     {
         mkdir($this->config['installationFolder'] . '/_temp_demo_data');
 
@@ -162,7 +153,7 @@ class InstallSampleData extends AbstractSubCommand
                 $this->extractZip($sampleDataFile);
                 break;
             default:
-                throw new \RuntimeException('Cannot extract sample data file: unknown file extension');
+                throw new RuntimeException('Cannot extract sample data file: unknown file extension');
         }
 
         // remove sample data file
@@ -171,44 +162,36 @@ class InstallSampleData extends AbstractSubCommand
         $expandedFolder = $this->config['installationFolder'] . '/_temp_demo_data';
         // Check if expanded folder contains only one directory. If yes, use this as expanded folder
         $expandedFolderContent = scandir($expandedFolder);
-        if (count($expandedFolderContent) === 3) {
+        if ($expandedFolderContent && count($expandedFolderContent) === 3) {
             return $expandedFolder . '/' . $expandedFolderContent[2];
         }
 
-        throw new \RuntimeException('Cannot extract sample data file: unknown file structure');
+        throw new RuntimeException('Cannot extract sample data file: unknown file structure');
     }
 
-    /**
-     * @param string $sampleDataFile
-     * @return void
-     */
     private function extractTar(string $sampleDataFile): void
     {
         $process = new Process(
             ['tar', '-xzf', $sampleDataFile],
-            $this->config['installationFolder'] . '/_temp_demo_data'
+            $this->config['installationFolder'] . '/_temp_demo_data',
         );
         $process->setTimeout(3600);
         $process->run();
         if (!$process->isSuccessful()) {
-            throw new \RuntimeException('Cannot extract sample data file: ' . $process->getErrorOutput());
+            throw new RuntimeException('Cannot extract sample data file: ' . $process->getErrorOutput());
         }
     }
 
-    /**
-     * @param string $sampleDataFile
-     * @return void
-     */
     private function extractZip(string $sampleDataFile): void
     {
         $process = new Process(
             ['unzip', $sampleDataFile],
-            $this->config['installationFolder'] . '/_temp_demo_data'
+            $this->config['installationFolder'] . '/_temp_demo_data',
         );
         $process->setTimeout(3600);
         $process->run();
         if (!$process->isSuccessful()) {
-            throw new \RuntimeException('Cannot extract sample data file: ' . $process->getErrorOutput());
+            throw new RuntimeException('Cannot extract sample data file: ' . $process->getErrorOutput());
         }
     }
 }

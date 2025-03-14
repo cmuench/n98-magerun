@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Cache;
 
 use N98\Util\BinaryString;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +17,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class EnableCommand extends AbstractCacheCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('cache:enable')
@@ -23,29 +26,24 @@ class EnableCommand extends AbstractCacheCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->detectMagento($output, true);
+        $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
-        $codeArgument = BinaryString::trimExplodeEmpty(',', $input->getArgument('code'));
+        $codeArgument = BinaryString::trimExplodeEmpty(',', (string) $input->getArgument('code'));
         $this->saveCacheStatus($codeArgument, true);
 
-        if (count($codeArgument) > 0) {
+        if ($codeArgument !== []) {
             foreach ($codeArgument as $code) {
                 $output->writeln('<info>Cache <comment>' . $code . '</comment> enabled</info>');
             }
         } else {
             $output->writeln('<info>Caches enabled</info>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

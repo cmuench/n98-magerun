@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\SubCommand;
 
 use N98\Magento\Command\AbstractMagentoCommand;
@@ -14,134 +16,95 @@ use Symfony\Component\Console\Question\Question;
  */
 abstract class AbstractSubCommand implements SubCommandInterface
 {
-    /**
-     * @var ConfigBag
-     */
-    protected $config;
+    protected ConfigBag $config;
 
-    /**
-     * @var array
-     */
-    protected $commandConfig;
+    protected array $commandConfig;
 
-    /**
-     * @var InputInterface
-     */
-    protected $input;
+    protected InputInterface $input;
 
-    /**
-     * @var OutputInterface
-     */
-    protected $output;
+    protected OutputInterface $output;
 
-    /**
-     * @var AbstractMagentoCommand
-     */
-    protected $command;
+    protected AbstractMagentoCommand $command;
 
-    /**
-     * @param ConfigBag $config
-     */
-    public function setConfig(ConfigBag $config)
+    public function setConfig(ConfigBag $configBag): void
     {
-        $this->config = $config;
+        $this->config = $configBag;
     }
 
-    /**
-     * @param array $commandConfig
-     */
-    public function setCommandConfig(array $commandConfig)
+    public function setCommandConfig(array $commandConfig): void
     {
         $this->commandConfig = $commandConfig;
     }
 
-    /**
-     * @param InputInterface $input
-     */
-    public function setInput(InputInterface $input)
+    public function setInput(InputInterface $input): void
     {
         $this->input = $input;
     }
 
-    /**
-     * @param OutputInterface $output
-     */
-    public function setOutput(OutputInterface $output)
+    public function setOutput(OutputInterface $output): void
     {
         $this->output = $output;
     }
 
-    /**
-     * @return AbstractMagentoCommand
-     */
-    public function getCommand()
+    public function getCommand(): AbstractMagentoCommand
     {
         return $this->command;
     }
 
-    /**
-     * @param AbstractMagentoCommand $command
-     */
-    public function setCommand(AbstractMagentoCommand $command)
+    public function setCommand(AbstractMagentoCommand $magentoCommand): void
     {
-        $this->command = $command;
+        $this->command = $magentoCommand;
     }
 
-    /**
-     * @return void
-     */
-    abstract public function execute();
+    abstract public function execute(): void;
 
     /**
      * @param string $name of the optional option
      * @param string $question to ask in case the option is not available
-     * @param bool $default value (true means yes, false no), optional, defaults to true
-     * @return bool
+     * @param string|bool $default value (true means yes, false no), optional, defaults to true
      */
-    final protected function getOptionalBooleanOption($name, $question, $default = true)
+    final protected function getOptionalBooleanOption(string $name, string $question, $default = true): bool
     {
         if ($this->input->getOption($name) !== null) {
-            $flag = $this->getCommand()->parseBoolOption($this->input->getOption($name));
-
-            return $flag;
-        } else {
-            $questionHelper = $this->getCommand()->getQuestionHelper();
-
-            $question = new Question(
-                sprintf(
-                    '<question>%s</question> <comment>[%s]',
-                    $question,
-                    $default
-                ),
-                $default
-            );
-
-            $flag = $questionHelper->ask(
-                $this->input,
-                $this->output,
-                $question
-            );
-
-            return $flag;
+            return $this->getCommand()->parseBoolOption($this->input->getOption($name));
         }
+
+        $questionHelper = $this->getCommand()->getQuestionHelper();
+        $question = new Question(
+            sprintf(
+                '<question>%s</question> <comment>[%s]',
+                $question,
+                $default,
+            ),
+            $default,
+        );
+        return $questionHelper->ask(
+            $this->input,
+            $this->output,
+            $question,
+        );
     }
 
     /**
      * @param string $name of flag/option
      * @param bool $default value for flag/option if set but with no value
-     * @return bool
      */
-    final protected function hasFlagOrOptionalBoolOption($name, $default = true)
+    final protected function hasFlagOrOptionalBoolOption(string $name, bool $default = true): bool
     {
         if (!$this->input->hasOption($name)) {
             return false;
         }
 
         $value = $this->input->getOption($name);
-        if (null === $value) {
-            return (bool) $default;
+
+        if (is_null($value)) {
+            return $default;
         }
 
-        return (bool) $this->getCommand()->parseBoolOption($value);
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return $this->getCommand()->parseBoolOption((string) $value);
     }
 }

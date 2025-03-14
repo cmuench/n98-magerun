@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Cron;
 
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -12,12 +15,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractCronCommand
 {
-    /**
-     * @var array
-     */
-    protected $infos;
+    protected array $infos;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('sys:cron:list')
@@ -26,12 +26,6 @@ class ListCommand extends AbstractCronCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
@@ -48,6 +42,7 @@ class ListCommand extends AbstractCronCommand
         $tableHelper
             ->setHeaders(array_keys(current($table)))
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Dependencies;
 
 use Exception;
 use InvalidArgumentException;
 use Mage;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -18,9 +21,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class OnCommand extends AbstractMagentoCommand
 {
-    private $modules;
+    private ?array $modules = null;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:module:dependencies:on')
@@ -31,12 +34,6 @@ class OnCommand extends AbstractMagentoCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $moduleName = $input->getArgument('moduleName');
@@ -51,12 +48,13 @@ class OnCommand extends AbstractMagentoCommand
 
         try {
             $dependencies = $this->findModuleDependencies($moduleName, $recursive);
-            if (!empty($dependencies)) {
+            if ($dependencies !== []) {
                 usort($dependencies, [$this, 'sortDependencies']);
             } else {
                 $dependencies = [];
             }
-            if ($input->getOption('format') === null && count($dependencies) === 0) {
+
+            if ($input->getOption('format') === null && $dependencies === []) {
                 $output->writeln(sprintf("Module %s doesn't have dependencies", $moduleName));
             } else {
                 $tableHelper = $this->getTableHelper();
@@ -64,31 +62,30 @@ class OnCommand extends AbstractMagentoCommand
                     ->setHeaders(['Name', 'Status', 'Current installed version', 'Code pool'])
                     ->renderByFormat($output, $dependencies, $input->getOption('format'));
             }
-        } catch (Exception $e) {
-            $output->writeln($e->getMessage());
+        } catch (Exception $exception) {
+            $output->writeln($exception->getMessage());
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
     /**
      * Find dependencies of given module $moduleName.
      * If $recursive = true, dependencies will be collected recursively for all module dependencies
      *
-     * @param string $moduleName
-     * @param bool $recursive
-     * @return array
      * @throws InvalidArgumentException
      */
-    protected function findModuleDependencies($moduleName, $recursive = false)
+    protected function findModuleDependencies(string $moduleName, bool $recursive = false): array
     {
-        if ($this->modules === null) {
-            $this->modules = Mage::app()->getConfig()->getNode('modules')->asArray();
+        if (is_null($this->modules)) {
+            $modulesNode = Mage::app()->getConfig()->getNode('modules');
+            $this->modules = $modulesNode ? $modulesNode->asArray() : [];
         }
 
         if (isset($this->modules[$moduleName])) {
             $dependencies = [];
             $module = $this->modules[$moduleName];
-            if (isset($module['depends']) && is_array($module['depends']) && count($module['depends']) > 0) {
+            if (isset($module['depends']) && is_array($module['depends']) && $module['depends'] !== []) {
                 foreach (array_keys($module['depends']) as $dependencyName) {
                     if (isset($this->modules[$dependencyName])) {
                         $dependencies[] = [$dependencyName, isset($this->modules[$dependencyName]['active'])
@@ -97,7 +94,7 @@ class OnCommand extends AbstractMagentoCommand
                         if ($recursive) {
                             $dependencies = array_merge(
                                 $dependencies,
-                                $this->findModuleDependencies($dependencyName, $recursive)
+                                $this->findModuleDependencies($dependencyName, $recursive),
                             );
                         }
                     } else {
@@ -107,19 +104,15 @@ class OnCommand extends AbstractMagentoCommand
             }
 
             return $dependencies;
-        } else {
-            throw new InvalidArgumentException(sprintf('Module %s was not found', $moduleName));
         }
+
+        throw new InvalidArgumentException(sprintf('Module %s was not found', $moduleName));
     }
 
     /**
      * Sort dependencies list by module name ascending
-     *
-     * @param array $a
-     * @param array $b
-     * @return int
      */
-    private function sortDependencies(array $a, array $b)
+    private function sortDependencies(array $a, array $b): int
     {
         return strcmp($a[0], $b[0]);
     }

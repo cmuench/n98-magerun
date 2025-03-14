@@ -13,13 +13,16 @@
         "magerun"
     ],
     "require": {
-        "php": "~7.4.0 || ~8.0.0 || ~8.1.0 || ~8.2.0",
+        "php": "~7.4.0 || ~8.0.0 || ~8.1.0 || ~8.2.0 || ~8.3.0 || ~8.4.0",
+        "ext-dom": "*",
         "ext-json": "*",
         "ext-libxml": "*",
         "ext-pdo": "*",
+        "ext-simplexml": "*",
         "ext-zip": "*",
         "fakerphp/faker": "^1.20",
         "n98/junit-xml": "~1.0",
+        "nesbot/carbon": "^2.73",
         "psy/psysh": "~0.4",
         "rmccue/requests": "^2.0.11",
         "symfony/console": "~5.4",
@@ -32,13 +35,15 @@
         "twig/twig": "^3.7.1"
     },
     "require-dev": {
-        "ext-simplexml": "*",
         "bamarni/symfony-console-autocomplete": "^1.2.0",
         "composer/composer": "^2.7",
         "friendsofphp/php-cs-fixer": "^3.4",
         "mikey179/vfsstream": "^1.6",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^9",
-        "rector/rector": "^2.0.6",
+        "rector/rector": "^2",
         "seld/phar-utils": "~1.2.0"
     },
     "autoload": {
@@ -74,5 +79,23 @@
             "php": "7.4.0"
         },
         "sort-packages": true
+    },
+    "scripts": {
+        "php-cs-fixer:test": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "php-cs-fixer:fix": "vendor/bin/php-cs-fixer fix",
+        "phpstan": "XDEBUG_MODE=off php vendor/bin/phpstan analyze",
+        "phpstan:baseline": "XDEBUG_MODE=off php vendor/bin/phpstan analyze -b .phpstan.dist.baseline.neon",
+        "phpunit:test": "XDEBUG_MODE=off php vendor/bin/phpunit --configuration .phpunit.dist.xml --no-coverage",
+        "rector:test": "vendor/bin/rector process --config .rector.php --dry-run",
+        "rector:fix": "vendor/bin/rector process --config .rector.php"
+    },
+    "scripts-descriptions": {
+        "php-cs-fixer:test": "Run php-cs-fixer",
+        "php-cs-fixer:fix": "Run php-cs-fixer and fix issues",
+        "phpstan": "Run phpstan",
+        "phpstan:baseline": "Run phpstan and update baseline",
+        "phpunit:test": "Run PHPUnit",
+        "rector:test": "Run rector",
+        "rector:fix": "Run rector and fix issues"
     }
 }

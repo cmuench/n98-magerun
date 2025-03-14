@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Rewrite;
 
 use BadMethodCallException;
@@ -16,32 +18,16 @@ use stdClass;
  */
 final class ClassExistsChecker
 {
-    /**
-     * @var string
-     */
-    private $className;
+    private string $className;
 
-    /**
-     * @var stdClass
-     */
-    private $context;
+    private ?stdClass $context;
 
-    /**
-     * @param string $className
-     *
-     * @return ClassExistsChecker
-     */
-    public static function create($className)
+    public static function create(string $className): ClassExistsChecker
     {
         return new self($className);
     }
 
-    /**
-     * ClassExistsChecker constructor.
-     *
-     * @param string $className
-     */
-    public function __construct($className)
+    public function __construct(string $className)
     {
         $this->className = $className;
     }
@@ -49,26 +35,22 @@ final class ClassExistsChecker
     /**
      * Check for class-existence while handling conditional definition of classes that extend from non-existent classes
      * as it can happen with Magento Varien_Autoload that is using include to execute files for class definitions.
-     *
-     * @return bool
      */
-    public function existsExtendsSafe()
+    public function existsExtendsSafe(): bool
     {
         $context = $this->startContext();
         try {
             $exists = class_exists($this->className);
-        } catch (Exception $ex) {
-            return $this->exceptionContext($context, $ex);
+        } catch (Exception $exception) {
+            return $this->exceptionContext($context, $exception);
         }
+
         $this->endContext($context);
 
         return $exists;
     }
 
-    /**
-     * @return stdClass
-     */
-    private function startContext()
+    private function startContext(): stdClass
     {
         $context = new stdClass();
         $context->lastException = null;
@@ -79,52 +61,44 @@ final class ClassExistsChecker
         return $this->context = $context;
     }
 
-    /**
-     * @param $context
-     * @param Exception $ex
-     * @return bool
-     */
-    private function exceptionContext($context, Exception $ex)
+    private function exceptionContext(stdClass $context, Exception $exception): bool
     {
         /** @var AutoloadHandler $terminator */
         $terminator = $context->terminator;
         $terminator->reset();
 
-        if ($ex !== $context->lastException) {
+        if ($exception !== $context->lastException) {
             $message = sprintf('Exception when checking for class %s existence', $context->className);
-            throw new ClassExistsThrownException($message, 0, $ex);
+            throw new ClassExistsThrownException($message, 0, $exception);
         }
 
         return false;
     }
 
-    /**
-     * @param $context
-     */
-    private function endContext($context)
+    private function endContext(stdClass $context): void
     {
         if (isset($context->terminator)) {
             /** @var AutoloadHandler $terminator */
             $terminator = $context->terminator;
             $terminator->reset();
         }
+
         $this->context = null;
     }
 
     /**
-     * Method is called as last auto-loader (if all others have failed), so the class does not exists (is not
+     * Method is called as last autoloader (if all others have failed), so the class does not exist (is not
      * resolve-able)
      *
-     * @param $notFoundClass
      * @throws CanNotAutoloadCollaboratorClassException
      */
-    public function autoloadTerminator($notFoundClass)
+    public function autoloadTerminator(string $notFoundClass): void
     {
         $className = $this->className;
-        if (null === $context = $this->context) {
-            //@codeCoverageIgnoreStart
+        if (is_null($context = $this->context)) {
+            // @codeCoverageIgnoreStart
             // sanity check, should never come here
-            throw new BadMethodCallException('No autoloading in place');
+            throw new BadMethodCallException('No autoload in place');
             // @codeCoverageIgnoreStop
         }
 
@@ -135,7 +109,7 @@ final class ClassExistsChecker
         $context->stack[] = [$notFoundClass, $className];
 
         $context->lastException = new CanNotAutoloadCollaboratorClassException(
-            sprintf('%s for %s', $notFoundClass, $className)
+            sprintf('%s for %s', $notFoundClass, $className),
         );
         throw $context->lastException;
     }

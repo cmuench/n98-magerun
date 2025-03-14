@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Customer;
 
+use Mage_Customer_Model_Customer;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -13,7 +17,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractCustomerCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('customer:list')
@@ -23,9 +27,6 @@ class ListCommand extends AbstractCustomerCommand
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -34,38 +35,39 @@ If search parameter is given the customers are filtered (searchs in firstname, l
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $config = $this->getCommandConfig();
 
-        $collection = $this->getCustomerCollection();
-        $collection->addAttributeToSelect(['entity_id', 'email', 'firstname', 'lastname', 'website_id']);
+        $mageCustomerModelResourceCustomerCollection = $this->getCustomerCollection();
+        $mageCustomerModelResourceCustomerCollection->addAttributeToSelect(['entity_id', 'email', 'firstname', 'lastname', 'website_id']);
 
         if ($input->getArgument('search')) {
-            $collection->addAttributeToFilter(
-                [['attribute' => 'email', 'like' => '%' . $input->getArgument('search') . '%'], ['attribute' => 'firstname', 'like' => '%' . $input->getArgument('search') . '%'], ['attribute' => 'lastname', 'like' => '%' . $input->getArgument('search') . '%']]
+            $mageCustomerModelResourceCustomerCollection->addAttributeToFilter(
+                [['attribute' => 'email', 'like' => '%' . $input->getArgument('search') . '%'], ['attribute' => 'firstname', 'like' => '%' . $input->getArgument('search') . '%'], ['attribute' => 'lastname', 'like' => '%' . $input->getArgument('search') . '%']],
             );
         }
 
-        $collection->setPageSize($config['limit']);
+        $mageCustomerModelResourceCustomerCollection->setPageSize($config['limit']);
 
         $table = [];
-        foreach ($collection as $customer) {
-            $table[] = [$customer->getId(), $customer->getEmail(), $customer->getFirstname(), $customer->getLastname(), $this->_getWebsiteCodeById($customer->getwebsiteId())];
+        /** @var Mage_Customer_Model_Customer $customer */
+        foreach ($mageCustomerModelResourceCustomerCollection as $customer) {
+            $table[] = [
+                $customer->getId(),
+                $customer->getEmail(),
+                $customer->getFirstname(),
+                $customer->getLastname(),
+                $this->_getWebsiteCodeById((int) $customer->getWebsiteId()),
+            ];
         }
 
-        if (count($table) > 0) {
+        if ($table !== []) {
             $tableHelper = $this->getTableHelper();
             $tableHelper
                 ->setHeaders(['id', 'email', 'firstname', 'lastname', 'website'])
@@ -73,6 +75,7 @@ HELP;
         } else {
             $output->writeln('<comment>No customers found</comment>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

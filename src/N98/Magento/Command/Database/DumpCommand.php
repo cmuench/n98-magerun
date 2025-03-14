@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Database;
 
+use Carbon\Carbon;
 use InvalidArgumentException;
 use N98\Magento\Command\Database\Compressor\Compressor;
 use N98\Util\Console\Enabler;
 use N98\Util\Exec;
 use N98\Util\VerifyOrDie;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -20,17 +24,11 @@ use Symfony\Component\Console\Question\Question;
  */
 class DumpCommand extends AbstractDatabaseCommand
 {
-    /**
-     * @var array
-     */
-    protected $tableDefinitions = null;
+    protected ?array $tableDefinitions;
 
-    /**
-     * @var array
-     */
-    protected $commandConfig = null;
+    protected array $commandConfig;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('db:dump')
@@ -40,112 +38,109 @@ class DumpCommand extends AbstractDatabaseCommand
                 't',
                 InputOption::VALUE_OPTIONAL,
                 'Append or prepend a timestamp to filename if a filename is provided. ' .
-                'Possible values are "suffix", "prefix" or "no".'
+                'Possible values are "suffix", "prefix" or "no".',
             )
             ->addOption(
                 'compression',
                 'c',
                 InputOption::VALUE_REQUIRED,
-                'Compress the dump file using one of the supported algorithms'
+                'Compress the dump file using one of the supported algorithms',
             )
             ->addOption(
                 'dump-option',
                 null,
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'Option(s) to pass to mysqldump command. E.g. --dump-option="--set-gtid-purged=off"'
+                'Option(s) to pass to mysqldump command. E.g. --dump-option="--set-gtid-purged=off"',
             )
             ->addOption(
                 'xml',
                 null,
                 InputOption::VALUE_NONE,
-                'Dump database in xml format'
+                'Dump database in xml format',
             )
             ->addOption(
                 'hex-blob',
                 null,
                 InputOption::VALUE_NONE,
-                'Dump binary columns using hexadecimal notation (for example, "abc" becomes 0x616263)'
+                'Dump binary columns using hexadecimal notation (for example, "abc" becomes 0x616263)',
             )
             ->addOption(
                 'only-command',
                 null,
                 InputOption::VALUE_NONE,
-                'Print only mysqldump command. Do not execute'
+                'Print only mysqldump command. Do not execute',
             )
             ->addOption(
                 'print-only-filename',
                 null,
                 InputOption::VALUE_NONE,
-                'Execute and prints no output except the dump filename'
+                'Execute and prints no output except the dump filename',
             )
             ->addOption(
                 'dry-run',
                 null,
                 InputOption::VALUE_NONE,
-                'do everything but the dump'
+                'do everything but the dump',
             )
             ->addOption(
                 'no-single-transaction',
                 null,
                 InputOption::VALUE_NONE,
-                'Do not use single-transaction (not recommended, this is blocking)'
+                'Do not use single-transaction (not recommended, this is blocking)',
             )
             ->addOption(
                 'human-readable',
                 null,
                 InputOption::VALUE_NONE,
                 'Use a single insert with column names per row. Useful to track database differences. Use db:import ' .
-                '--optimize for speeding up the import.'
+                '--optimize for speeding up the import.',
             )
             ->addOption(
                 'add-routines',
                 null,
                 InputOption::VALUE_NONE,
-                'Include stored routines in dump (procedures & functions)'
+                'Include stored routines in dump (procedures & functions)',
             )
             ->addOption(
                 'no-tablespaces',
                 null,
                 InputOption::VALUE_NONE,
-                'Use this option if you want to create a dump without having the PROCESS privilege'
+                'Use this option if you want to create a dump without having the PROCESS privilege',
             )
             ->addOption('stdout', null, InputOption::VALUE_NONE, 'Dump to stdout')
             ->addOption(
                 'strip',
                 's',
                 InputOption::VALUE_OPTIONAL,
-                'Tables to strip (dump only structure of those tables)'
+                'Tables to strip (dump only structure of those tables)',
             )
             ->addOption(
                 'exclude',
                 'e',
                 InputOption::VALUE_OPTIONAL,
-                'Tables to exclude from the dump'
+                'Tables to exclude from the dump',
             )
             ->addOption(
                 'include',
                 'i',
                 InputOption::VALUE_OPTIONAL,
-                'Tables to include in the dump'
+                'Tables to include in the dump',
             )
             ->addOption(
                 'force',
                 'f',
                 InputOption::VALUE_NONE,
-                'Do not prompt if all options are defined'
+                'Do not prompt if all options are defined',
             )
             ->addOption(
                 'connection',
                 'con',
                 InputOption::VALUE_OPTIONAL,
-                'Specify local.xml connection node, default to default_setup'
+                'Specify local.xml connection node, default to default_setup',
             )
             ->setDescription('Dumps database with mysqldump cli client');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         $help = <<<HELP
@@ -172,11 +167,9 @@ HELP;
     }
 
     /**
-     * @return array
-     *
      * @deprecated Use database helper
      */
-    private function getTableDefinitions()
+    private function getTableDefinitions(): array
     {
         $this->commandConfig = $this->getCommandConfig();
 
@@ -190,10 +183,8 @@ HELP;
 
     /**
      * Generate help for table definitions
-     *
-     * @return string
      */
-    public function getTableDefinitionHelp()
+    public function getTableDefinitionHelp(): string
     {
         $messages = PHP_EOL;
         $this->commandConfig = $this->getCommandConfig();
@@ -226,6 +217,7 @@ HELP;
             if ($nameLen > $maxNameLen) {
                 $maxNameLen = $nameLen;
             }
+
             $list[] = [$name, $description];
         }
 
@@ -240,20 +232,12 @@ HELP;
             $messages .= sprintf(" <info>%s</info>%s  %s\n", $name, $spacer, $buffer);
         }
 
-        $messages .= <<<HELP
+        return $messages . <<<HELP
 
 Extended: https://github.com/netz98/n98-magerun/wiki/Stripped-Database-Dumps
 HELP;
-
-        return $messages;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // communicate early what is required for this command to run (is enabled)
@@ -273,15 +257,10 @@ HELP;
 
         $success = $this->runExecs($execs, $fileName, $input, $output);
 
-        return $success ? 0 : 1; // return with correct exec code
+        return $success ? Command::SUCCESS : Command::FAILURE; // return with correct exec code
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return array
-     */
-    private function createExecsArray(InputInterface $input, OutputInterface $output)
+    private function createExecsArray(InputInterface $input, OutputInterface $output): array
     {
         $execs = [];
 
@@ -318,12 +297,12 @@ HELP;
         $compressor = $this->getCompressor($input->getOption('compression'));
         $fileName = $this->getFileName($input, $output, $compressor);
 
-        $database = $this->getDatabaseHelper();
+        $databaseHelper = $this->getDatabaseHelper();
 
-        $mysqlClientToolConnectionString = $database->getMysqlClientToolConnectionString();
+        $mysqlClientToolConnectionString = $databaseHelper->getMysqlClientToolConnectionString();
 
         $stripTables = $this->stripTables($input, $output);
-        if ($stripTables) {
+        if ($stripTables !== []) {
             // dump structure for strip-tables
             $exec = 'mysqldump ' . $dumpOptions . '--no-data ' . $mysqlClientToolConnectionString;
             $exec .= ' ' . implode(' ', $stripTables);
@@ -332,6 +311,7 @@ HELP;
             if (!$input->getOption('stdout')) {
                 $exec .= ' > ' . escapeshellarg($fileName);
             }
+
             $execs[] = $exec;
         }
 
@@ -342,34 +322,29 @@ HELP;
         foreach (array_merge($excludeTables, $stripTables) as $ignoreTable) {
             $ignore .= '--ignore-table=' . $this->dbSettings['dbname'] . '.' . $ignoreTable . ' ';
         }
+
         $exec = 'mysqldump ' . $dumpOptions . $mysqlClientToolConnectionString . ' ' . $ignore;
         $exec .= $this->postDumpPipeCommands();
         $exec = $compressor->getCompressingCommand($exec);
         if (!$input->getOption('stdout')) {
-            $exec .= (count($stripTables) > 0 ? ' >> ' : ' > ') . escapeshellarg($fileName);
+            $exec .= ($stripTables !== [] ? ' >> ' : ' > ') . escapeshellarg($fileName);
         }
+
         $execs[] = $exec;
         return [$fileName, $execs];
     }
 
-    /**
-     * @param array $execs
-     * @param string $fileName
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return bool
-     */
-    private function runExecs(array $execs, $fileName, InputInterface $input, OutputInterface $output)
+    private function runExecs(array $execs, string $fileName, InputInterface $input, OutputInterface $output): bool
     {
         if ($input->getOption('only-command') && !$input->getOption('print-only-filename')) {
-            foreach ($execs as $command) {
-                $output->writeln($command);
+            foreach ($execs as $exec) {
+                $output->writeln($exec);
             }
         } else {
             if ($this->nonCommandOutput($input)) {
                 $output->writeln(
                     '<comment>Start dumping database <info>' . $this->dbSettings['dbname'] .
-                    '</info> to file <info>' . $fileName . '</info>'
+                    '</info> to file <info>' . $fileName . '</info>',
                 );
             }
 
@@ -393,13 +368,7 @@ HELP;
         return true;
     }
 
-    /**
-     * @param string $command
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return bool
-     */
-    private function runExec($command, InputInterface $input, OutputInterface $output)
+    private function runExec(string $command, InputInterface $input, OutputInterface $output): bool
     {
         $commandOutput = '';
 
@@ -419,12 +388,7 @@ HELP;
         return true;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return array
-     */
-    private function stripTables(InputInterface $input, OutputInterface $output)
+    private function stripTables(InputInterface $input, OutputInterface $output): array
     {
         if (!$input->getOption('strip')) {
             return [];
@@ -434,19 +398,14 @@ HELP;
 
         if ($this->nonCommandOutput($input)) {
             $output->writeln(
-                sprintf('<comment>No-data export for: <info>%s</info></comment>', implode(' ', $stripTables))
+                sprintf('<comment>No-data export for: <info>%s</info></comment>', implode(' ', $stripTables)),
             );
         }
 
         return $stripTables;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return array
-     */
-    private function excludeTables(InputInterface $input, OutputInterface $output)
+    private function excludeTables(InputInterface $input, OutputInterface $output): array
     {
         if ($input->getOption('exclude') && $input->getOption('include')) {
             throw new InvalidArgumentException('Cannot specify --include with --exclude');
@@ -459,18 +418,21 @@ HELP;
 
             if ($this->nonCommandOutput($input)) {
                 $output->writeln(
-                    sprintf('<comment>Excluded: <info>%s</info></comment>', implode(' ', $excludeTables))
+                    sprintf('<comment>Excluded: <info>%s</info></comment>', implode(' ', $excludeTables)),
                 );
             }
         }
 
         if ($input->getOption('include')) {
-            $includeTables = $this->resolveDatabaseTables($input->getOption('include'));
-            $excludeTables = array_diff($this->getDatabaseHelper()->getTables(), $includeTables);
-            if ($this->nonCommandOutput($input)) {
-                $output->writeln(
-                    sprintf('<comment>Included: <info>%s</info></comment>', implode(' ', $includeTables))
-                );
+            $allTables = $this->getDatabaseHelper()->getTables();
+            if ($allTables) {
+                $includeTables  = $this->resolveDatabaseTables($input->getOption('include'));
+                $excludeTables  = array_diff($allTables, $includeTables);
+                if ($this->nonCommandOutput($input)) {
+                    $output->writeln(
+                        sprintf('<comment>Included: <info>%s</info></comment>', implode(' ', $includeTables)),
+                    );
+                }
             }
         }
 
@@ -479,58 +441,42 @@ HELP;
 
     /**
      * @param string $list space separated list of tables
-     * @return array
      */
-    private function resolveDatabaseTables($list)
+    private function resolveDatabaseTables(string $list): array
     {
-        $database = $this->getDatabaseHelper();
+        $databaseHelper = $this->getDatabaseHelper();
 
-        return $database->resolveTables(
+        return $databaseHelper->resolveTables(
             explode(' ', $list),
-            $database->getTableDefinitions($this->getCommandConfig())
+            $databaseHelper->getTableDefinitions($this->getCommandConfig()),
         );
     }
 
     /**
      * Commands which filter mysql data. Piped to mysqldump command
-     *
-     * @return string
      */
-    protected function postDumpPipeCommands()
+    protected function postDumpPipeCommands(): string
     {
         return ' | LANG=C LC_CTYPE=C LC_ALL=C sed -e ' . escapeshellarg('s/DEFINER[ ]*=[ ]*[^*]*\*/\*/');
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param Compressor $compressor
-     *
-     * @return string
-     */
-    protected function getFileName(InputInterface $input, OutputInterface $output, Compressor $compressor)
+    protected function getFileName(InputInterface $input, OutputInterface $output, Compressor $compressor): string
     {
-        if ($input->getOption('xml')) {
-            $nameExtension = '.xml';
-        } else {
-            $nameExtension = '.sql';
-        }
+        $nameExtension = $input->getOption('xml') ? '.xml' : '.sql';
 
         $optionAddTime = $input->getOption('add-time');
         [$namePrefix, $nameSuffix] = $this->getFileNamePrefixSuffix($optionAddTime);
 
-        if ((
-            ($fileName = $input->getArgument('filename')) === null
-                || ($isDir = is_dir($fileName))
-        )
-            && !$input->getOption('stdout')
-        ) {
+        $fileName = $input->getArgument('filename');
+        if ($fileName === null || $isDir = is_dir((string) $fileName)
+            && !$input->getOption('stdout')) {
             $defaultName = VerifyOrDie::filename(
-                $namePrefix . $this->dbSettings['dbname'] . $nameSuffix . $nameExtension
+                $namePrefix . $this->dbSettings['dbname'] . $nameSuffix . $nameExtension,
             );
             if (isset($isDir) && $isDir) {
                 $defaultName = rtrim($fileName, '/') . '/' . $defaultName;
             }
+
             if (!$input->getOption('force')) {
                 $dialog = $this->getQuestionHelper();
                 $fileName = $dialog->ask(
@@ -541,24 +487,19 @@ HELP;
             } else {
                 $fileName = $defaultName;
             }
-        } else {
-            if ($optionAddTime) {
-                $pathParts = pathinfo($fileName);
-                $fileName = ($pathParts['dirname'] == '.' ? '' : $pathParts['dirname'] . '/') .
-                    $namePrefix . $pathParts['filename'] . $nameSuffix . '.' . $pathParts['extension'];
-            }
+        } elseif ($optionAddTime) {
+            $pathParts = pathinfo($fileName);
+            $fileName = ($pathParts['dirname'] == '.' ? '' : $pathParts['dirname'] . '/') .
+                $namePrefix . $pathParts['filename'] . $nameSuffix . '.' . $pathParts['extension'];
         }
 
-        $fileName = $compressor->getFileName($fileName);
-
-        return $fileName;
+        return $compressor->getFileName((string) $fileName);
     }
 
     /**
      * @param null|bool|string $optionAddTime [optional] true for default "suffix", other string values: "prefix", "no"
-     * @return array
      */
-    private function getFileNamePrefixSuffix($optionAddTime = null)
+    private function getFileNamePrefixSuffix($optionAddTime = null): array
     {
         $namePrefix = '';
         $nameSuffix = '';
@@ -566,7 +507,7 @@ HELP;
             return [$namePrefix, $nameSuffix];
         }
 
-        $timeStamp = date('Y-m-d_His');
+        $timeStamp = Carbon::now()->format('Y-m-d_His');
 
         if (in_array($optionAddTime, ['suffix', true], true)) {
             $nameSuffix = '_' . $timeStamp;
@@ -576,19 +517,15 @@ HELP;
             throw new InvalidArgumentException(
                 sprintf(
                     'Invalid --add-time value %s, possible values are none (for) "suffix", "prefix" or "no"',
-                    var_export($optionAddTime, true)
-                )
+                    var_export($optionAddTime, true),
+                ),
             );
         }
 
         return [$namePrefix, $nameSuffix];
     }
 
-    /**
-     * @param InputInterface $input
-     * @return bool
-     */
-    private function nonCommandOutput(InputInterface $input)
+    private function nonCommandOutput(InputInterface $input): bool
     {
         return
             !$input->getOption('stdout')

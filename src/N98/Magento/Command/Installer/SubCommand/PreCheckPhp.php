@@ -1,11 +1,14 @@
 <?php
 
-/** @noinspection PhpComposerExtensionStubsInspection */
+declare(strict_types=1);
 
 namespace N98\Magento\Command\Installer\SubCommand;
 
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
 use Symfony\Component\Console\Exception\RuntimeException;
+
+use function extension_loaded;
+use function ini_get;
 
 /**
  * Class PreCheckPhp
@@ -16,19 +19,14 @@ class PreCheckPhp extends AbstractSubCommand
 {
     /**
      * Check PHP environment against minimal required settings modules
-     *
-     * @return void
      */
-    public function execute()
+    public function execute(): void
     {
         $this->checkExtensions();
         $this->checkXDebug();
     }
 
-    /**
-     * @return void
-     */
-    protected function checkExtensions()
+    protected function checkExtensions(): void
     {
         $extensions = $this->commandConfig['installation']['pre-check']['php']['extensions'];
         $missingExtensions = [];
@@ -38,28 +36,24 @@ class PreCheckPhp extends AbstractSubCommand
             }
         }
 
-        if (count($missingExtensions) > 0) {
+        if ($missingExtensions !== []) {
             throw new RuntimeException(
-                'The following PHP extensions are required to start installation: ' . implode(',', $missingExtensions)
+                'The following PHP extensions are required to start installation: ' . implode(',', $missingExtensions),
             );
         }
     }
 
-    /**
-     * @throws \RuntimeException
-     * @return void
-     */
-    protected function checkXDebug()
+    protected function checkXDebug(): void
     {
-        if (\extension_loaded('xdebug') &&
+        if (extension_loaded('xdebug') &&
             function_exists('xdebug_is_enabled') &&
             \xdebug_is_enabled() &&
             ini_get('xdebug.max_nesting_level') != -1 &&
-            \ini_get('xdebug.max_nesting_level') < 200
+            ini_get('xdebug.max_nesting_level') < 200
         ) {
             $errorMessage = 'Please change PHP ini setting "xdebug.max_nesting_level". '
                             . 'Please change it to a value >= 200. '
-                            . 'Your current value is ' . \ini_get('xdebug.max_nesting_level');
+                            . 'Your current value is ' . ini_get('xdebug.max_nesting_level');
             throw new RuntimeException($errorMessage);
         }
     }

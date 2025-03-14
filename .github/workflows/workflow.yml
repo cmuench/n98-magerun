@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  composer:
+    name: Composer
+    uses: ./.github/workflows/composer.yml
+
+  php_compatibility:
+    name: Composer
+    uses: ./.github/workflows/php_compatibility.yml
+
+  php-cs-fixer:
+    name: PHP CS Fixer
+    needs: [composer]
+    uses: ./.github/workflows/php-cs-fixer.yml
+
+  phpstan:
+    name: PHPStan
+    needs: [composer, php-cs-fixer]
+    uses: ./.github/workflows/phpstan.yml
+
+  rector:
+    name: Rector
+    needs: [composer, php-cs-fixer]
+    uses: ./.github/workflows/rector.yml
+
+  unit_tests_magento_opensource:
+    name: PHPUnit Magento1
+    needs: [composer, php-cs-fixer, phpstan, rector]
+    uses: ./.github/workflows/test-magento-open-source.yml
+
+  unit_tests_om_20_0:
+    name: PHPUnit OpenMage 20.0
+    needs: [composer, php-cs-fixer, phpstan, rector]
+    uses: ./.github/workflows/test-openmage-20.0.yml
+
+  unit_tests_om_20_1:
+    name: PHPUnit OpenMage 20.1
+    needs: [composer, php-cs-fixer, phpstan, rector]
+    uses: ./.github/workflows/test-openmage-20.1.yml
+
+  unit_tests_om_20_10:
+    name: PHPUnit OpenMage 20.10
+    needs: [composer, php-cs-fixer, phpstan, rector]
+    uses: ./.github/workflows/test-openmage-20.10.yml
+
+  build_phar:
+    name: Build Phar
+    needs: [composer, php-cs-fixer, phpstan, rector, unit_tests_magento_opensource, unit_tests_om_20_0, unit_tests_om_20_1, unit_tests_om_20_10]
+    uses: ./.github/workflows/phar_build_and_update.yml

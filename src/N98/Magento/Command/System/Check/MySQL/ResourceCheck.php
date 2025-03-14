@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check\MySQL;
 
 use Mage;
@@ -18,10 +20,7 @@ use Varien_Db_Adapter_Interface;
  */
 abstract class ResourceCheck implements SimpleCheck
 {
-    /**
-     * @param ResultCollection $results
-     */
-    public function check(ResultCollection $results)
+    public function check(ResultCollection $resultCollection): void
     {
         /** @var Mage_Core_Model_Resource $resourceModel */
         $resourceModel = Mage::getModel('core/resource');
@@ -29,22 +28,17 @@ abstract class ResourceCheck implements SimpleCheck
         /** @var Varien_Db_Adapter_Interface|false $dbAdapter */
         $dbAdapter = $resourceModel->getConnection('core_write');
 
-        $result = $results->createResult();
+        $result = $resultCollection->createResult();
 
         if (!$dbAdapter instanceof Varien_Db_Adapter_Interface) {
             $result->setStatus($result::STATUS_ERROR);
             $result->setMessage(
-                "<error>Mysql Version: Can not check. Unable to obtain resource connection 'core_write'.</error>"
+                "<error>Mysql Version: Can not check. Unable to obtain resource connection 'core_write'.</error>",
             );
         } else {
             $this->checkImplementation($result, $dbAdapter);
         }
     }
 
-    /**
-     * @param Result $result
-     * @param Varien_Db_Adapter_Interface $dbAdapter
-     * @return void
-     */
-    abstract protected function checkImplementation(Result $result, Varien_Db_Adapter_Interface $dbAdapter);
+    abstract protected function checkImplementation(Result $result, Varien_Db_Adapter_Interface $varienDbAdapter): void;
 }

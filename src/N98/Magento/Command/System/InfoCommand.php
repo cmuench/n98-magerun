@@ -1,11 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System;
 
 use Exception;
 use InvalidArgumentException;
 use Mage;
+use Mage_Catalog_Model_Category;
+use Mage_Catalog_Model_Product;
+use Mage_Customer_Model_Customer;
+use Mage_Eav_Model_Entity_Attribute;
+use Mage_Eav_Model_Resource_Entity_Attribute_Collection;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -18,30 +26,22 @@ use Symfony\Component\Finder\Finder;
  */
 class InfoCommand extends AbstractMagentoCommand
 {
-    /**
-     * @var array
-     */
-    protected $infos;
+    protected array $infos;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('sys:info')
             ->addArgument(
                 'key',
                 InputArgument::OPTIONAL,
-                'Only output value of named param like "version". Key is case insensitive.'
+                'Only output value of named param like "version". Key is case insensitive.',
             )->setDescription('Prints infos about the current magento system.')
             ->addFormatOption()
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
@@ -73,8 +73,8 @@ class InfoCommand extends AbstractMagentoCommand
                 $this->customerCount();
                 $this->categoryCount();
                 $this->productCount();
-            } catch (Exception $e) {
-                $output->writeln('<error>' . $e->getMessage() . '</error>');
+            } catch (Exception $exception) {
+                $output->writeln('<error>' . $exception->getMessage() . '</error>');
             }
         }
 
@@ -89,6 +89,7 @@ class InfoCommand extends AbstractMagentoCommand
             if (!isset($this->infos[$settingArgument])) {
                 throw new InvalidArgumentException('Unknown key: ' . $settingArgument);
             }
+
             $output->writeln((string) $this->infos[$settingArgument]);
         } else {
             $tableHelper = $this->getTableHelper();
@@ -96,11 +97,13 @@ class InfoCommand extends AbstractMagentoCommand
                 ->setHeaders(['name', 'value'])
                 ->renderByFormat($output, $table, $input->getOption('format'));
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    protected function magentoVersion()
+    protected function magentoVersion(): string
     {
+        // @phpstan-ignore function.alreadyNarrowedType
         if (method_exists('Mage', 'getOpenMageVersion')) {
             return 'OpenMage LTS ' . Mage::getOpenMageVersion();
         }
@@ -108,7 +111,7 @@ class InfoCommand extends AbstractMagentoCommand
         return Mage::getVersion();
     }
 
-    protected function addCacheInfos()
+    protected function addCacheInfos(): void
     {
         $this->infos['Cache Backend'] = get_class(Mage::app()->getCache()->getBackend());
 
@@ -122,7 +125,7 @@ class InfoCommand extends AbstractMagentoCommand
         }
     }
 
-    protected function findCoreOverwrites()
+    protected function findCoreOverwrites(): void
     {
         $folders = [$this->_magentoRootFolder . '/app/code/local/Mage', $this->_magentoRootFolder . '/app/code/local/Enterprise', $this->_magentoRootFolder . '/app/code/community/Mage', $this->_magentoRootFolder . '/app/code/community/Enterprise'];
         foreach ($folders as $key => $folder) {
@@ -131,7 +134,7 @@ class InfoCommand extends AbstractMagentoCommand
             }
         }
 
-        if (count($folders) > 0) {
+        if ($folders !== []) {
             $finder = Finder::create();
             $finder
                 ->files()
@@ -141,9 +144,12 @@ class InfoCommand extends AbstractMagentoCommand
         }
     }
 
-    protected function findVendors()
+    protected function findVendors(): void
     {
-        $codePools = ['core'      => $this->_magentoRootFolder . '/app/code/core/', 'community' => $this->_magentoRootFolder . '/app/code/community/'];
+        $codePools = [
+            'core'      => $this->_magentoRootFolder . '/app/code/core/',
+            'community' => $this->_magentoRootFolder . '/app/code/community/',
+        ];
 
         if (is_dir($this->_magentoRootFolder . '/app/code/local/')) {
             $codePools['local'] = $this->_magentoRootFolder . '/app/code/local/';
@@ -161,32 +167,42 @@ class InfoCommand extends AbstractMagentoCommand
             $vendors = iterator_to_array($finder);
             $vendors = array_map(
                 function ($value) use ($codePoolDir) {
-                    return str_replace($codePoolDir, '', $value);
+                    return str_replace($codePoolDir, '', (string) $value);
                 },
-                $vendors
+                $vendors,
             );
 
             $this->infos['Vendors (' . $codePool . ')'] = implode(', ', $vendors);
         }
     }
 
-    protected function categoryCount()
+    protected function categoryCount(): void
     {
-        $this->infos['Category Count'] = Mage::getModel('catalog/category')->getCollection()->getSize();
+        /** @var Mage_Catalog_Model_Category $model */
+        $model = Mage::getModel('catalog/category');
+        $this->infos['Category Count'] = $model->getCollection()->getSize();
     }
 
-    protected function productCount()
+    protected function productCount(): void
     {
-        $this->infos['Product Count'] = Mage::getModel('catalog/product')->getCollection()->getSize();
+        /** @var Mage_Catalog_Model_Product $model */
+        $model = Mage::getModel('catalog/product');
+        $this->infos['Product Count'] = $model->getCollection()->getSize();
     }
 
-    protected function customerCount()
+    protected function customerCount(): void
     {
-        $this->infos['Customer Count'] = Mage::getModel('customer/customer')->getCollection()->getSize();
+        /** @var Mage_Customer_Model_Customer $model */
+        $model = Mage::getModel('customer/customer');
+        $this->infos['Customer Count'] = $model->getCollection()->getSize();
     }
 
-    protected function attributeCount()
+    protected function attributeCount(): void
     {
-        $this->infos['Attribute Count'] = Mage::getModel('eav/entity_attribute')->getCollection()->getSize();
+        /** @var Mage_Eav_Model_Entity_Attribute $model */
+        $model = Mage::getModel('eav/entity_attribute');
+        /** @var Mage_Eav_Model_Resource_Entity_Attribute_Collection $collection */
+        $collection = $model->getCollection();
+        $this->infos['Attribute Count'] = $collection->getSize();
     }
 }

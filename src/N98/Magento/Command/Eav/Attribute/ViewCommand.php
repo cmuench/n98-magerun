@@ -1,10 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Eav\Attribute;
 
 use InvalidArgumentException;
 use Mage;
+use Mage_Core_Exception;
+use Mage_Eav_Model_Config;
+use Mage_Eav_Model_Entity_Attribute_Abstract;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +22,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ViewCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('eav:attribute:view')
@@ -26,17 +32,11 @@ class ViewCommand extends AbstractMagentoCommand
             ->addFormatOption();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $entityType = $input->getArgument('entityType');
@@ -46,6 +46,12 @@ class ViewCommand extends AbstractMagentoCommand
         if (!$attribute) {
             throw new InvalidArgumentException('Attribute was not found.');
         }
+
+        /** @var array|false $cacheIdTags */
+        $cacheIdTags    = $attribute->getCacheIdTags();
+        /** @var array|false $cacheTags */
+        $cacheTags      = $attribute->getCacheTags();
+        $flatColumns    = $attribute->getFlatColumns();
 
         $table = [
             ['ID', $attribute->getId()],
@@ -57,10 +63,10 @@ class ViewCommand extends AbstractMagentoCommand
             ['Backend-Table', $attribute->getBackendTable() ?: ''],
             ['Backend-Type', $attribute->getBackendType() ?: ''],
             ['Source-Model', $attribute->getSourceModel() ?: ''],
-            ['Cache-ID-Tags', $attribute->getCacheIdTags() ? implode(',', $attribute->getCacheIdTags()) : ''],
-            ['Cache-Tags', $attribute->getCacheTags() ? implode(',', $attribute->getCacheTags()) : ''],
+            ['Cache-ID-Tags', $cacheIdTags ? implode(',', $cacheIdTags) : ''],
+            ['Cache-Tags', $cacheTags ? implode(',', $cacheTags) : ''],
             ['Default-Value', $attribute->getDefaultValue() ?: ''],
-            ['Flat-Columns', $attribute->getFlatColumns() ? implode(',', array_keys($attribute->getFlatColumns())) : '']
+            ['Flat-Columns', $flatColumns ? implode(',', array_keys($flatColumns)) : ''],
         ];
 
         $flatIndexes = $attribute->getFlatIndexes() ? $attribute->getFlatIndexes() : '';
@@ -76,24 +82,25 @@ class ViewCommand extends AbstractMagentoCommand
             $table[] = ['Frontend-Label', $attribute->getFrontend()->getLabel()];
             $table[] = ['Frontend-Class', trim($attribute->getFrontend()->getClass())];
             $table[] = ['Frontend-Input', trim($attribute->getFrontend()->getInputType())];
-            $table[] = ['Frontend-Input-Renderer-Class', trim($attribute->getFrontend()->getInputRendererClass())];
+            $table[] = ['Frontend-Input-Renderer-Class', trim((string) $attribute->getFrontend()->getInputRendererClass())];
         }
 
         $tableHelper = $this->getTableHelper();
         $tableHelper
             ->setHeaders(['Type', 'Value'])
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
     /**
-     * @param string $entityType
-     * @param string $attributeCode
-     *
-     * @return \Mage_Eav_Model_Entity_Attribute_Abstract|false
+     * @return Mage_Eav_Model_Entity_Attribute_Abstract|false
+     * @throws Mage_Core_Exception
      */
-    protected function getAttribute($entityType, $attributeCode)
+    protected function getAttribute(string $entityType, string $attributeCode)
     {
-        return Mage::getModel('eav/config')->getAttribute($entityType, $attributeCode);
+        /** @var Mage_Eav_Model_Config $model */
+        $model = Mage::getModel('eav/config');
+        return $model->getAttribute($entityType, $attributeCode);
     }
 }

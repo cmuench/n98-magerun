@@ -1,8 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer\SubCommand;
 
+use Closure;
+use Exception;
+use InvalidArgumentException;
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
+use PDO;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,26 +21,20 @@ use Symfony\Component\Console\Question\Question;
  */
 class CreateDatabase extends AbstractSubCommand
 {
-    /**
-     * @var array
-     */
-    private $argv;
+    private ?array $argv = null;
+
+    protected Closure $notEmptyCallback;
 
     /**
-     * @var \Closure
+     * @throws Exception
      */
-    protected $notEmptyCallback;
-
-    /**
-     * @return void
-     * @throws \Exception
-     */
-    public function execute()
+    public function execute(): void
     {
         $this->notEmptyCallback = function ($input) {
             if (empty($input)) {
-                throw new \InvalidArgumentException('Please enter a value');
+                throw new InvalidArgumentException('Please enter a value');
             }
+
             return $input;
         };
 
@@ -43,7 +43,7 @@ class CreateDatabase extends AbstractSubCommand
         foreach ($dbOptions as $dbOption) {
             foreach ($this->getCliArguments() as $definedCliOption) {
                 if (str_starts_with($definedCliOption, $dbOption)) {
-                    $dbOptionsFound++;
+                    ++$dbOptionsFound;
                 }
             }
         }
@@ -60,10 +60,10 @@ class CreateDatabase extends AbstractSubCommand
             $db = $this->validateDatabaseSettings($this->input, $this->output);
 
             if ($db === false) {
-                throw new \InvalidArgumentException('Database configuration is invalid');
+                throw new InvalidArgumentException('Database configuration is invalid');
             }
         } else {
-            /** @var $questionHelper QuestionHelper */
+            /** @var QuestionHelper $questionHelper */
             $questionHelper = $this->getCommand()->getHelperSet()->get('question');
             do {
                 // Host
@@ -72,7 +72,7 @@ class CreateDatabase extends AbstractSubCommand
 
                 $question = new Question(
                     '<question>Please enter the database host</question> <comment>[' . $dbHostDefault . ']</comment>: ',
-                    $dbHostDefault
+                    $dbHostDefault,
                 );
                 $question->setValidator($this->notEmptyCallback);
 
@@ -81,8 +81,8 @@ class CreateDatabase extends AbstractSubCommand
                     $questionHelper->ask(
                         $this->input,
                         $this->output,
-                        $question
-                    )
+                        $question,
+                    ),
                 );
 
                 // Port
@@ -92,9 +92,9 @@ class CreateDatabase extends AbstractSubCommand
                 $question = new Question(
                     sprintf(
                         '<question>Please enter the database port </question> <comment>[%s]</comment>: ',
-                        $dbPortDefault
+                        $dbPortDefault,
                     ),
-                    $dbPortDefault
+                    $dbPortDefault,
                 );
                 $question->setValidator($this->notEmptyCallback);
 
@@ -103,8 +103,8 @@ class CreateDatabase extends AbstractSubCommand
                     (int) $questionHelper->ask(
                         $this->input,
                         $this->output,
-                        $question
-                    )
+                        $question,
+                    ),
                 );
 
                 // User
@@ -114,9 +114,9 @@ class CreateDatabase extends AbstractSubCommand
                 $question = new Question(
                     sprintf(
                         '<question>Please enter the database username</question> <comment>[%s]</comment>: ',
-                        $dbUserDefault
+                        $dbUserDefault,
                     ),
-                    $dbUserDefault
+                    $dbUserDefault,
                 );
                 $question->setValidator($this->notEmptyCallback);
 
@@ -125,8 +125,8 @@ class CreateDatabase extends AbstractSubCommand
                     $questionHelper->ask(
                         $this->input,
                         $this->output,
-                        $question
-                    )
+                        $question,
+                    ),
                 );
 
                 // Password
@@ -136,9 +136,9 @@ class CreateDatabase extends AbstractSubCommand
                 $question = new Question(
                     sprintf(
                         '<question>Please enter the database password</question> <comment>[%s]</comment>: ',
-                        $dbPassDefault
+                        $dbPassDefault,
                     ),
-                    $dbPassDefault
+                    $dbPassDefault,
                 );
 
                 $this->config->setString(
@@ -146,8 +146,8 @@ class CreateDatabase extends AbstractSubCommand
                     $questionHelper->ask(
                         $this->input,
                         $this->output,
-                        $question
-                    )
+                        $question,
+                    ),
                 );
 
                 // DB-Name
@@ -157,9 +157,9 @@ class CreateDatabase extends AbstractSubCommand
                 $question = new Question(
                     sprintf(
                         '<question>Please enter the database name</question> <comment>[%s]</comment>: ',
-                        $dbNameDefault
+                        $dbNameDefault,
                     ),
-                    $dbNameDefault
+                    $dbNameDefault,
                 );
                 $question->setValidator($this->notEmptyCallback);
 
@@ -168,8 +168,8 @@ class CreateDatabase extends AbstractSubCommand
                     $questionHelper->ask(
                         $this->input,
                         $this->output,
-                        $question
-                    )
+                        $question,
+                    ),
                 );
 
                 $db = $this->validateDatabaseSettings($this->input, $this->output);
@@ -180,9 +180,7 @@ class CreateDatabase extends AbstractSubCommand
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return bool|\PDO
+     * @return false|PDO
      */
     protected function validateDatabaseSettings(InputInterface $input, OutputInterface $output)
     {
@@ -190,48 +188,45 @@ class CreateDatabase extends AbstractSubCommand
             $dsn = sprintf(
                 'mysql:host=%s;port=%s',
                 $this->config->getString('db_host'),
-                $this->config->getString('db_port')
+                $this->config->getString('db_port'),
             );
 
-            $db = new \PDO($dsn, $this->config->getString('db_user'), $this->config->getString('db_pass'));
-            $db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo = new PDO($dsn, $this->config->getString('db_user'), $this->config->getString('db_pass'));
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             $dbName = $this->config->getString('db_name');
 
             // Query to check if the database "foo" exists
             $query = sprintf("SHOW DATABASES LIKE '%s'", $dbName);
-            $stmt = $db->prepare($query);
+            $stmt = $pdo->prepare($query);
             $stmt->execute();
             $result = $stmt->fetchAll();
 
             // Check if database exists
-            if (count($result) === 0) {
-                $db->query('CREATE DATABASE `' . $dbName . '`');
+            if ($result && count($result) === 0) {
+                $pdo->query('CREATE DATABASE `' . $dbName . '`');
                 $output->writeln('<info>Created database ' . $dbName . '</info>');
-                $db->query('USE `' . $dbName . '`');
-                return $db;
+                $pdo->query('USE `' . $dbName . '`');
+                return $pdo;
             }
 
             if ($input->getOption('noDownload') && !$input->getOption('forceUseDb')) {
-                $output->writeln("<error>Database {$this->config->getString('db_name')} already exists.</error>");
+                $output->writeln(sprintf('<error>Database %s already exists.</error>', $this->config->getString('db_name')));
 
                 return false;
             }
 
-            return $db;
-        } catch (\Exception $e) {
-            $output->writeln('<error>' . $e->getMessage() . '</error>');
+            return $pdo;
+        } catch (Exception $exception) {
+            $output->writeln('<error>' . $exception->getMessage() . '</error>');
         }
 
         return false;
     }
 
-    /**
-     * @return array
-     */
-    private function getCliArguments()
+    private function getCliArguments(): ?array
     {
-        if ($this->argv === null) {
+        if (is_null($this->argv)) {
             $this->argv = $_SERVER['argv'];
         }
 

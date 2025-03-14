@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util\Markdown;
 
 /**
@@ -9,35 +11,26 @@ namespace N98\Util\Markdown;
  */
 class VersionFilePrinter
 {
-    /**
-     * @var string
-     */
-    private $content;
+    private string $content;
 
-    /**
-     * @param string $content
-     */
-    public function __construct($content)
+    public function __construct(string $content)
     {
         $this->content = $content;
     }
 
-    /**
-     * @param string $startVersion
-     * @return string
-     */
-    public function printFromVersion($startVersion)
+    public function printFromVersion(string $startVersion): string
     {
         $contentToReturn = '';
 
         $lines = preg_split("/((\r?\n)|(\r\n?))/", $this->content);
+        if ($lines) {
+            foreach ($lines as $line) {
+                if ($line === $startVersion) {
+                    break;
+                }
 
-        foreach ($lines as $line) {
-            if ($line === $startVersion) {
-                break;
+                $contentToReturn .= $line . "\n";
             }
-
-            $contentToReturn .= $line . "\n";
         }
 
         return trim($contentToReturn) . "\n";

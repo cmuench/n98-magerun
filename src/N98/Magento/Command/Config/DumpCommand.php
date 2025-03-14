@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Config;
 
 use DOMDocument;
 use InvalidArgumentException;
 use Mage;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class DumpCommand extends AbstractConfigCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('config:dump')
@@ -25,9 +28,6 @@ class DumpCommand extends AbstractConfigCommand
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -52,28 +52,37 @@ HELP;
     }
 
     /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
      * @throws InvalidArgumentException
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $config = Mage::app()->getConfig()->getNode($input->getArgument('xpath'));
         if (!$config) {
             throw new InvalidArgumentException('xpath was not found');
         }
-        $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-        $dom->loadXML($config->asXml());
-        $output->writeln($dom->saveXML(), OutputInterface::OUTPUT_RAW);
-        return 0;
+
+        $domDocument = new DOMDocument();
+        $domDocument->preserveWhiteSpace = false;
+        $domDocument->formatOutput = true;
+
+        $configXml = $config->asXml();
+        if (!$configXml) {
+            return Command::FAILURE;
+        }
+
+        $domDocument->loadXML($configXml);
+        $domDocumentXml = $domDocument->saveXML();
+        if (!$domDocumentXml) {
+            return Command::FAILURE;
+        }
+
+        $output->writeln($domDocumentXml, OutputInterface::OUTPUT_RAW);
+
+        return Command::SUCCESS;
     }
 }

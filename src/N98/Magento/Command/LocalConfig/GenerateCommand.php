@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\LocalConfig;
 
 use DateTime;
 use InvalidArgumentException;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -17,7 +20,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class GenerateCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('local-config:generate')
@@ -32,9 +35,6 @@ class GenerateCommand extends AbstractMagentoCommand
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -46,12 +46,6 @@ Generates the app/etc/local.xml.
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
@@ -60,24 +54,29 @@ HELP;
 
         if (file_exists($configFile)) {
             $output->writeln(
-                sprintf('<info>local.xml file already exists in folder "%s/app/etc"</info>', dirname($configFile))
+                sprintf('<info>local.xml file already exists in folder "%s/app/etc"</info>', dirname($configFile)),
             );
-            return 0;
+            return Command::FAILURE;
         }
 
         $this->writeSection($output, 'Generate Magento local.xml');
         $this->askForArguments($input, $output);
         if (!file_exists($configFileTemplate)) {
             $output->writeln(sprintf('<error>File %s does not exist.</error>', $configFileTemplate));
-            return 0;
+            return Command::FAILURE;
         }
 
         if (!is_writable(dirname($configFileTemplate))) {
             $output->writeln(sprintf('<error>Folder %s is not writeable</error>', dirname($configFileTemplate)));
-            return 0;
+            return Command::FAILURE;
         }
 
         $content = file_get_contents($configFileTemplate);
+        if ($content === '' || $content === '0' || $content === false) {
+            $output->writeln(sprintf('<error>Template files %s has no content</error>', dirname($configFileTemplate)));
+            return Command::FAILURE;
+        }
+
         $key = $input->getArgument('encryption-key') ?: md5(uniqid());
 
         $replace = [
@@ -100,68 +99,64 @@ HELP;
         $newFileContent = str_replace(array_keys($replace), array_values($replace), $content);
         if (false === file_put_contents($configFile, $newFileContent)) {
             $output->writeln('<error>could not save config</error>');
-            return 0;
+            return Command::FAILURE;
         }
 
         $output->writeln('<info>Generated config</info>');
-        return 0;
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     */
-    protected function askForArguments(InputInterface $input, OutputInterface $output)
+    protected function askForArguments(InputInterface $input, OutputInterface $output): void
     {
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
 
         $messagePrefix = 'Please enter the ';
         $arguments = [
             'db-host' => [
                 'prompt' => 'database host',
-                'required' => true
+                'required' => true,
             ],
             'db-user' => [
                 'prompt' => 'database username',
-                'required' => true
+                'required' => true,
             ],
             'db-pass' => [
                 'prompt' => 'database password',
-                'required' => false
+                'required' => false,
             ],
             'db-name' => [
                 'prompt' => 'database name',
-                'required' => true
+                'required' => true,
             ],
             'session-save' => [
                 'prompt' => 'session save',
                 'required' => true,
-                'default' => 'files'
+                'default' => 'files',
             ],
             'admin-frontname' => [
                 'prompt' => 'admin frontname',
                 'required' => true,
-                'default' => 'admin'
-            ]
+                'default' => 'admin',
+            ],
         ];
 
         foreach ($arguments as $argument => $options) {
             if (isset($options['default']) && $input->getArgument($argument) === null) {
                 $input->setArgument(
                     $argument,
-                    $dialog->ask(
+                    $questionHelper->ask(
                         $input,
                         $output,
                         new Question(
                             sprintf('<question>%s%s:</question> ', $messagePrefix, $options['prompt']),
-                            (string) $options['default']
+                            (string) $options['default'],
                         ),
-                    )
+                    ),
                 );
             } else {
                 $input->setArgument(
                     $argument,
-                    $this->getOrAskForArgument($argument, $input, $output, $messagePrefix . $options['prompt'])
+                    $this->getOrAskForArgument($argument, $input, $output, $messagePrefix . $options['prompt']),
                 );
             }
 
@@ -176,8 +171,7 @@ HELP;
      */
     protected function _getLocalConfigFilename()
     {
-        $configFile = $this->_magentoRootFolder . '/app/etc/local.xml';
-        return $configFile;
+        return $this->_magentoRootFolder . '/app/etc/local.xml';
     }
 
     /**
@@ -186,16 +180,14 @@ HELP;
      * in case the string has length and not the whole string can be wrapped in a CDATA section (because it contains
      * a sequence that can not be part of a CDATA section "]]>") the part that can well be.
      *
-     * @param string $string
-     *
      * @return string CDATA section or equivalent
      */
-    protected function _wrapCData($string)
+    protected function _wrapCData(?string $string): string
     {
+        $string = is_null($string) ? '' : $string;
         $buffer = strtr($string, [']]>' => ']]>]]&gt;<![CDATA[']);
         $buffer = '<![CDATA[' . $buffer . ']]>';
-        $buffer = strtr($buffer, ['<![CDATA[]]>' => '']);
 
-        return $buffer;
+        return strtr($buffer, ['<![CDATA[]]>' => '']);
     }
 }

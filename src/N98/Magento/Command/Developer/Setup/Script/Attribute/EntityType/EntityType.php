@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Setup\Script\Attribute\EntityType;
 
 use Mage_Eav_Model_Entity_Attribute;
+use Varien_Db_Adapter_Interface;
 
 /**
  * EntityType interface
@@ -11,24 +14,11 @@ use Mage_Eav_Model_Entity_Attribute;
  */
 interface EntityType
 {
-    /**
-     * @param Mage_Eav_Model_Entity_Attribute $attribute
-     */
-    public function __construct(Mage_Eav_Model_Entity_Attribute $attribute);
+    public function __construct(Mage_Eav_Model_Entity_Attribute $mageEavModelEntityAttribute);
 
-    /**
-     * @param $connection
-     * @return void
-     */
-    public function setReadConnection($connection);
+    public function setReadConnection(Varien_Db_Adapter_Interface $varienDbAdapter): void;
 
-    /**
-     * @return array
-     */
-    public function getWarnings();
+    public function getWarnings(): array;
 
-    /**
-     * @return string
-     */
-    public function generateCode();
+    public function generateCode(): string;
 }

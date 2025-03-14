@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Customer;
 
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +17,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class CreateCommand extends AbstractCustomerCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('customer:create')
@@ -28,35 +31,30 @@ class CreateCommand extends AbstractCustomerCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
 
         // Password
         if (($password = $input->getArgument('password')) == null) {
             $question = new Question('<question>Password:</question> ');
             $question->setHidden(true);
-            $password = $dialog->ask($input, $output, $question);
+            $password = $questionHelper->ask($input, $output, $question);
         }
 
         // Firstname
         if (($firstname = $input->getArgument('firstname')) == null) {
-            $firstname = $dialog->ask($input, $output, new Question('<question>Firstname:</question> '));
+            $firstname = $questionHelper->ask($input, $output, new Question('<question>Firstname:</question> '));
         }
 
         // Lastname
         if (($lastname = $input->getArgument('lastname')) == null) {
-            $lastname = $dialog->ask($input, $output, new Question('<question>Lastname:</question> '));
+            $lastname = $questionHelper->ask($input, $output, new Question('<question>Lastname:</question> '));
         }
 
         $parameterHelper = $this->getParameterHelper();
@@ -68,32 +66,29 @@ class CreateCommand extends AbstractCustomerCommand
         $website = $parameterHelper->askWebsite($input, $output);
 
         // create new customer
-        $customer = $this->getCustomerModel();
-        $customer->setWebsiteId($website->getId());
-        $customer->loadByEmail($email);
+        $mageCustomerModelCustomer = $this->getCustomerModel();
+        $mageCustomerModelCustomer->setWebsiteId((int) $website->getId());
+        $mageCustomerModelCustomer->loadByEmail($email);
 
         $outputPlain = $input->getOption('format') === null;
 
         $table = [];
-        if (!$customer->getId()) {
-            $customer->setWebsiteId($website->getId());
-            $customer->setEmail($email);
-            $customer->setFirstname($firstname);
-            $customer->setLastname($lastname);
-            $customer->setPassword($password);
-
-            $customer->save();
-            $customer->setConfirmation(null);
-            $customer->save();
+        if (!$mageCustomerModelCustomer->getId()) {
+            $mageCustomerModelCustomer->setWebsiteId((int) $website->getId());
+            $mageCustomerModelCustomer->setEmail($email);
+            $mageCustomerModelCustomer->setFirstname($firstname);   # @phpstan-ignore method.notFound (missing in current OpenMage)
+            $mageCustomerModelCustomer->setLastname($lastname);     # @phpstan-ignore method.notFound (missing in current OpenMage)
+            $mageCustomerModelCustomer->setPassword($password);
+            $mageCustomerModelCustomer->save();
+            $mageCustomerModelCustomer->setConfirmation(null);
+            $mageCustomerModelCustomer->save();
             if ($outputPlain) {
                 $output->writeln('<info>Customer <comment>' . $email . '</comment> successfully created</info>');
             } else {
                 $table[] = [$email, $password, $firstname, $lastname];
             }
-        } else {
-            if ($outputPlain) {
-                $output->writeln('<error>Customer ' . $email . ' already exists</error>');
-            }
+        } elseif ($outputPlain) {
+            $output->writeln('<error>Customer ' . $email . ' already exists</error>');
         }
 
         if (!$outputPlain) {
@@ -102,6 +97,7 @@ class CreateCommand extends AbstractCustomerCommand
                 ->setHeaders(['email', 'password', 'firstname', 'lastname'])
                 ->renderByFormat($output, $table, $input->getOption('format'));
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

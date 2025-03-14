@@ -7,6 +7,7 @@ namespace N98\Magento\Command;
 use Exception;
 use Mage;
 use Mage_Core_Model_App;
+use Mage_Core_Model_Config;
 use Mage_Core_Model_Store;
 use Mage_Core_Model_Store_Exception;
 use Symfony\Component\Console\Command\Command;
@@ -25,6 +26,10 @@ use Symfony\Component\Console\Question\Question;
  */
 abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
 {
+    public string $commandName = '';
+
+    public string $commandDescription = '';
+
     public const COMMAND_ARGUMENT_STORE = 'store';
 
     public const COMMAND_OPTION_OFF = 'off';
@@ -53,50 +58,32 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
      */
     public const SCOPE_STORE_VIEW_GLOBAL = 'store_view_global';
 
-    /**
-     * @var string
-     */
-    protected $configPath = '';
+    protected string $configPath = '';
 
-    /**
-     * @var string
-     */
-    protected $toggleComment = '';
+    protected string $toggleComment = '';
 
-    /**
-     * @var string
-     */
-    protected $falseName = 'disabled';
+    protected string $falseName = 'disabled';
 
-    /**
-     * @var string
-     */
-    protected $trueName = 'enabled';
+    protected string $trueName = 'enabled';
 
     /**
      * Add admin store to interactive prompt
-     *
-     * @var bool
      */
-    protected $withAdminStore = false;
+    protected bool $withAdminStore = false;
 
-    /**
-     * @var string
-     */
-    protected $scope = self::SCOPE_STORE_VIEW;
+    protected string $scope = self::SCOPE_STORE_VIEW;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         // for backwards compatibility before v3.0
-        if (property_exists($this, 'commandName')) {
+        // @phpstan-ignore function.alreadyNarrowedType
+        if (property_exists($this, 'commandName') && $this->commandName) {
             $this->setName($this->commandName);
         }
 
         // for backwards compatibility before v3.0
-        if (property_exists($this, 'commandDescription')) {
+        // @phpstan-ignore function.alreadyNarrowedType
+        if (property_exists($this, 'commandDescription') && $this->commandDescription) {
             $this->setDescription($this->commandDescription);
         }
 
@@ -105,45 +92,44 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
                 self::COMMAND_OPTION_ON,
                 null,
                 InputOption::VALUE_NONE,
-                'Switch on'
+                'Switch on',
             )
             ->addOption(
                 self::COMMAND_OPTION_OFF,
                 null,
                 InputOption::VALUE_NONE,
-                'Switch off'
+                'Switch off',
             )
         ;
 
-        if ($this->scope == self::SCOPE_STORE_VIEW_GLOBAL) {
+        if ($this->scope === self::SCOPE_STORE_VIEW_GLOBAL) {
             $this->addOption(
                 self::COMMAND_OPTION_GLOBAL,
                 null,
                 InputOption::VALUE_NONE,
-                'Set value on default scope'
+                'Set value on default scope',
             );
         }
 
-        if ($this->scope == self::SCOPE_STORE_VIEW || $this->scope == self::SCOPE_STORE_VIEW_GLOBAL) {
+        if ($this->scope === self::SCOPE_STORE_VIEW || $this->scope === self::SCOPE_STORE_VIEW_GLOBAL) {
             $this->addArgument(
                 self::COMMAND_ARGUMENT_STORE,
                 InputArgument::OPTIONAL,
-                'Store code or ID'
+                'Store code or ID',
             );
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function initialize(InputInterface $input,OutputInterface $output)
+    protected function initialize(InputInterface $input, OutputInterface $output): void
     {
         // for backwards compatibility before v3.0
+        // @phpstan-ignore function.alreadyNarrowedType
         if (property_exists($this, 'commandName')) {
             $output->writeln('<warning>Property "commandName" is deprecated, use "public static $defaultName"</warning>');
         }
 
         // for backwards compatibility before v3.0
+        // @phpstan-ignore function.alreadyNarrowedType
         if (property_exists($this, 'commandDescription')) {
             $output->writeln('<warning>Property "commandDescription" is deprecated, use "public static $defaultDescription"</warning>');
         }
@@ -164,8 +150,8 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
         }
 
         $runOnStoreView = false;
-        if ($this->scope == self::SCOPE_STORE_VIEW
-            || ($this->scope == self::SCOPE_STORE_VIEW_GLOBAL && !$input->getOption(self::COMMAND_OPTION_GLOBAL))
+        if ($this->scope === self::SCOPE_STORE_VIEW
+            || ($this->scope === self::SCOPE_STORE_VIEW_GLOBAL && !$input->getOption(self::COMMAND_OPTION_GLOBAL))
         ) {
             $runOnStoreView = true;
         }
@@ -188,14 +174,14 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
 
         Mage::app()->getConfig()->saveConfig(
             $this->configPath,
-            $isFalse ? 1 : 0,
+            $isFalse ? '1' : '0',
             $store->getId() == Mage_Core_Model_App::ADMIN_STORE_ID ? 'default' : 'stores',
-            $store->getId()
+            $store->getId(),
         );
 
         $comment =
             '<comment>' . $this->toggleComment . '</comment> '
-            . '<info>' . (!$isFalse ? $this->falseName : $this->trueName) . '</info>'
+            . '<info>' . ($isFalse ? $this->trueName : $this->falseName) . '</info>'
             . ($runOnStoreView ? ' <comment>for store</comment> <info>' . $store->getCode() . '</info>' : '');
 
         $output->writeln($comment);
@@ -211,79 +197,65 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
     /**
      * Determine if a developer restriction is in place, and if we're enabling something that will use it
      * then notify and ask if it needs to be changed from its current value.
-     *
-     * @param Mage_Core_Model_Store $store
-     * @param bool $enabled
-     * @return void
      */
-    protected function detectAskAndSetDeveloperIp(Mage_Core_Model_Store $store, bool $enabled): void
+    protected function detectAskAndSetDeveloperIp(Mage_Core_Model_Store $mageCoreModelStore, bool $enabled): void
     {
         if (!$enabled) {
             // No need to notify about developer IP restrictions if we're disabling template hints etc
             return;
         }
 
-        if (!$devRestriction = $store->getConfig('dev/restrict/allow_ips')) {
+        if (!$devRestriction = $mageCoreModelStore->getConfig('dev/restrict/allow_ips')) {
             return;
         }
 
-        $helper = $this->getIoHelper();
-        $this->askAndSetDeveloperIp($helper->getInput(), $helper->getOutput(), $store, $devRestriction);
+        $ioHelper = $this->getIoHelper();
+        $this->askAndSetDeveloperIp($ioHelper->getInput(), $ioHelper->getOutput(), $mageCoreModelStore, $devRestriction);
     }
 
     /**
      * Ask if the developer IP should be changed, and change it if required
-     *
-     * @param  InputInterface         $input
-     * @param  OutputInterface        $output
-     * @param  Mage_Core_Model_Store  $store
-     * @param  string|null            $devRestriction
-     * @return void
      */
     protected function askAndSetDeveloperIp(
         InputInterface        $input,
         OutputInterface       $output,
-        Mage_Core_Model_Store $store,
+        Mage_Core_Model_Store $mageCoreModelStore,
         ?string               $devRestriction
     ): void {
         $output->writeln(
             sprintf(
                 '<comment><info>Please note:</info> developer IP restriction is enabled for <info>%s</info>.',
-                $devRestriction
-            )
+                $devRestriction,
+            ),
         );
 
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
         $question = new Question('<question>Change developer IP? Enter a new IP to change or leave blank:</question> ');
         /** @var string $newDeveloperIp */
-        $newDeveloperIp = $dialog->ask($input, $output, $question);
+        $newDeveloperIp = $questionHelper->ask($input, $output, $question);
 
         if (empty($newDeveloperIp)) {
             return;
         }
 
-        $this->setDeveloperIp($store, $newDeveloperIp);
+        $this->setDeveloperIp($mageCoreModelStore, $newDeveloperIp);
         $output->writeln(sprintf(
             '<comment><info>New developer IP restriction set to %s</info></comment>',
-            $newDeveloperIp
+            $newDeveloperIp,
         ));
     }
 
     /**
      * Set the restricted IP for developer access
-     *
-     * @param Mage_Core_Model_Store $store
-     * @param string $newDeveloperIp
      */
-    protected function setDeveloperIp(Mage_Core_Model_Store $store, string $newDeveloperIp): void
+    protected function setDeveloperIp(Mage_Core_Model_Store $mageCoreModelStore, string $newDeveloperIp): void
     {
-        Mage::getModel('core/config')
-            ->saveConfig('dev/restrict/allow_ips', $newDeveloperIp, 'stores', $store->getId());
+        /** @var Mage_Core_Model_Config $model */
+        $model = Mage::getModel('core/config');
+        $model->saveConfig('dev/restrict/allow_ips', $newDeveloperIp, 'stores', $mageCoreModelStore->getId());
     }
 
     /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
      *
      * @return mixed
      */
@@ -293,19 +265,7 @@ abstract class AbstractMagentoStoreConfigCommand extends AbstractMagentoCommand
         return $parameterHelper->askStore($input, $output, self::COMMAND_ARGUMENT_STORE, $this->withAdminStore);
     }
 
-    /**
-     * @param Mage_Core_Model_Store $store
-     * @param bool $disabled
-     */
-    protected function _beforeSave(Mage_Core_Model_Store $store, bool $disabled): void
-    {
-    }
+    protected function _beforeSave(Mage_Core_Model_Store $mageCoreModelStore, bool $disabled): void {}
 
-    /**
-     * @param Mage_Core_Model_Store $store
-     * @param bool $disabled
-     */
-    protected function _afterSave(Mage_Core_Model_Store $store, bool $disabled): void
-    {
-    }
+    protected function _afterSave(Mage_Core_Model_Store $mageCoreModelStore, bool $disabled): void {}
 }

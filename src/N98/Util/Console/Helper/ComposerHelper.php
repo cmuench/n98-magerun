@@ -1,13 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util\Console\Helper;
 
+use Exception;
 use N98\Util\OperatingSystem;
 use Symfony\Component\Console\Helper\Helper as AbstractHelper;
 use Symfony\Component\Console\Input\InputAwareInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
+
+use function json_decode;
 
 /**
  * Class ComposerHelper
@@ -16,23 +21,13 @@ use Symfony\Component\Process\Process;
  */
 class ComposerHelper extends AbstractHelper implements InputAwareInterface
 {
-    /**
-     * @var InputInterface
-     */
-    private $input;
-
-    /**
-     * @param array $composerArgs
-     * @param bool $silent
-     * @return string
-     */
-    public function run(array $composerArgs, $silent = false)
+    public function run(array $composerArgs, bool $silent = false): string
     {
         $commandArgs = array_merge([$this->getBinPath()], $composerArgs);
 
         $process = new Process($commandArgs);
         $process->setTimeout(3600);
-        $process->run(function ($type, $buffer) use ($silent) {
+        $process->run(function ($type, $buffer) use ($silent): void {
             if ($silent) {
                 return;
             }
@@ -50,11 +45,9 @@ class ComposerHelper extends AbstractHelper implements InputAwareInterface
     /**
      * Returns the composer config key -> Composer passed json data
      *
-     * @param string $key
-     * @param bool $useGlobalConfig
      * @return string|object
      */
-    public function getConfigValue($key, $useGlobalConfig = true)
+    public function getConfigValue(string $key, bool $useGlobalConfig = true)
     {
         $jsonCode = '';
         $commandArgs = ['-q'];
@@ -78,20 +71,14 @@ class ComposerHelper extends AbstractHelper implements InputAwareInterface
 
                 $jsonCode .= $line;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $exception) {
             $jsonCode = 'false';
         }
 
-        return \json_decode($jsonCode);
+        return json_decode($jsonCode);
     }
 
-    /**
-     * @param string $key
-     * @param array $values
-     * @param bool $useGlobalConfig
-     * @return string
-     */
-    public function setConfigValue($key, $values, $useGlobalConfig = true)
+    public function setConfigValue(string $key, array $values, bool $useGlobalConfig = true): string
     {
         $commandArgs = [];
         if ($useGlobalConfig) {
@@ -102,23 +89,18 @@ class ComposerHelper extends AbstractHelper implements InputAwareInterface
         $commandArgs[] = $key;
         $commandArgs = array_merge($commandArgs, $values);
 
-        return $this->run($commandArgs, false);
+        return $this->run($commandArgs);
     }
 
-    /**
-     * @return bool
-     */
-    public function isInstalled()
+    public function isInstalled(): bool
     {
         return $this->getBinPath() !== '';
     }
 
     /**
      * Returns the path to composer bin
-     *
-     * @return string
      */
-    public function getBinPath()
+    public function getBinPath(): string
     {
         $composerBin = '';
 
@@ -134,11 +116,9 @@ class ComposerHelper extends AbstractHelper implements InputAwareInterface
     /**
      * Returns the canonical name of this helper.
      *
-     * @return string The canonical name
-     *
      * @api
      */
-    public function getName()
+    public function getName(): string
     {
         return 'composer';
     }
@@ -146,10 +126,7 @@ class ComposerHelper extends AbstractHelper implements InputAwareInterface
     /**
      * Sets the Console Input.
      *
-     * @param InputInterface $input
+     * @return void
      */
-    public function setInput(InputInterface $input)
-    {
-        $this->input = $input;
-    }
+    public function setInput(InputInterface $input) {}
 }

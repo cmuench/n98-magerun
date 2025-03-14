@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Observer;
 
 use InvalidArgumentException;
 use Mage;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -17,7 +20,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:module:observer:list')
@@ -28,21 +31,15 @@ class ListCommand extends AbstractMagentoCommand
                 'sort',
                 null,
                 InputOption::VALUE_NONE,
-                'Sort by event name ascending'
+                'Sort by event name ascending',
             );
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $type = $input->getArgument('type');
@@ -60,17 +57,25 @@ class ListCommand extends AbstractMagentoCommand
         if ($input->getOption('format') === null) {
             $this->writeSection($output, 'Observers: ' . $type);
         }
-        $frontendEvents = Mage::getConfig()->getNode($type . '/events')->asArray();
+
+        $frontendEvents = Mage::getConfig()->getNode($type . '/events');
+        if (!$frontendEvents) {
+            return Command::FAILURE;
+        }
+
+        $frontendEvents = $frontendEvents->asArray();
         if (true === $input->getOption('sort')) {
             // sorting for Observers is a bad idea because the order in which observers will be called is important.
             ksort($frontendEvents);
         }
+
         $table = [];
         foreach ($frontendEvents as $eventName => $eventData) {
             $observerList = [];
             foreach ($eventData['observers'] as $observer) {
                 $observerList[] = $this->getObserver($observer, $type);
             }
+
             $table[] = [$eventName, implode("\n", $observerList)];
         }
 
@@ -79,18 +84,14 @@ class ListCommand extends AbstractMagentoCommand
             ->setHeaders(['Event', 'Observers'])
             ->setRows($table)
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
     /**
-     * get observer string (list entry)
-     *
-     * @param array  $observer
-     * @param string $area
-     *
-     * @return string
+     * Get observer string (list entry)
      */
-    protected function getObserver(array $observer, $area)
+    protected function getObserver(array $observer, string $area): string
     {
         $type = $this->getObserverType($observer, $area);
 
@@ -103,18 +104,10 @@ class ListCommand extends AbstractMagentoCommand
 
         $method = isset($observer['method']) ? '::' . $observer['method'] : '';
 
-        $observer = $type . $class . $method;
-
-        return $observer;
+        return $type . $class . $method;
     }
 
-    /**
-     * @param array  $observer
-     * @param string $area
-     *
-     * @return string
-     */
-    private function getObserverType(array $observer, $area)
+    private function getObserverType(array $observer, string $area): string
     {
         // singleton is the default type Mage_Core_Model_App::dispatchEvent
         $type = 'singleton';
@@ -123,11 +116,11 @@ class ListCommand extends AbstractMagentoCommand
             // '' means that no Mage::get___() will be used
             $type = '';
         }
+
         if (isset($observer['type'])) {
             $type = $observer['type'];
         }
-        $type = str_pad($type, 11, ' ', STR_PAD_RIGHT);
 
-        return $type;
+        return str_pad($type, 11, ' ', STR_PAD_RIGHT);
     }
 }

@@ -1,13 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Config;
 
 use Mage;
 use RuntimeException;
+use SimpleXMLElement;
 use stdClass;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Varien_Simplexml_Config;
 
 /**
  * Search config command
@@ -16,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class SearchCommand extends AbstractConfigCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('config:search')
@@ -24,9 +29,6 @@ class SearchCommand extends AbstractConfigCommand
             ->addArgument('text', InputArgument::REQUIRED, 'The text to search for');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -34,17 +36,11 @@ Searches the merged system.xml configuration tree <labels/> and <comments/> for 
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $this->writeSection($output, 'Config Search');
@@ -53,7 +49,7 @@ HELP;
         $system = Mage::getConfig()->loadModulesConfiguration('system.xml');
         $matches = $this->_searchConfiguration($searchString, $system);
 
-        if (count($matches) > 0) {
+        if ($matches !== []) {
             foreach ($matches as $match) {
                 $output->writeln('Found a <comment>' . $match->type . '</comment> with a match');
                 $output->writeln('  ' . $this->_getPhpMageStoreConfigPathFromMatch($match));
@@ -65,47 +61,40 @@ HELP;
                         str_ireplace(
                             $searchString,
                             '<info>' . $searchString . '</info>',
-                            (string) $match->node->comment
-                        )
+                            (string) $match->node->comment,
+                        ),
                     );
                 }
+
                 $output->writeln('');
             }
         } else {
             $output->writeln('<info>No matches for <comment>' . $searchString . '</comment></info>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param string $searchString
-     * @param string $system
-     *
-     * @return array
-     */
-    protected function _searchConfiguration($searchString, $system)
+    protected function _searchConfiguration(string $searchString, Varien_Simplexml_Config $varienSimplexmlConfig): array
     {
         $xpathSections = ['sections/*', 'sections/*/groups/*', 'sections/*/groups/*/fields/*'];
 
         $matches = [];
-        foreach ($xpathSections as $xpath) {
-            $tmp = $this->_searchConfigurationNodes(
-                $searchString,
-                $system->getNode()->xpath($xpath)
-            );
-            $matches = array_merge($matches, $tmp);
+        foreach ($xpathSections as $xpathSection) {
+            $systemNode = $varienSimplexmlConfig->getNode();
+            if ($systemNode) {
+                $tmp = $this->_searchConfigurationNodes(
+                    $searchString,
+                    $systemNode->xpath($xpathSection),
+                );
+                $matches = array_merge($matches, $tmp);
+            }
         }
 
         return $matches;
     }
 
-    /**
-     * @param string $searchString
-     * @param array  $nodes
-     *
-     * @return array
-     */
-    protected function _searchConfigurationNodes($searchString, $nodes)
+    protected function _searchConfigurationNodes(string $searchString, array $nodes): array
     {
         $matches = [];
         foreach ($nodes as $node) {
@@ -119,12 +108,9 @@ HELP;
     }
 
     /**
-     * @param string $searchString
-     * @param object $node
-     *
-     * @return bool|stdClass
+     * @return false|stdClass
      */
-    protected function _searchNode($searchString, $node)
+    protected function _searchNode(string $searchString, SimpleXMLElement $node)
     {
         $match = new stdClass();
         $match->type = $this->_getNodeType($node);
@@ -145,16 +131,13 @@ HELP;
         return false;
     }
 
-    /**
-     * @param object $node
-     *
-     * @return string
-     */
-    protected function _getNodeType($node)
+    protected function _getNodeType(SimpleXMLElement $node): string
     {
-        $parent = current($node->xpath('parent::*'));
-        $grandParent = current($parent->xpath('parent::*'));
-        if ($grandParent->getName() == 'config') {
+        /** @var SimpleXMLElement $parent */
+        $parent         = current($node->xpath('parent::*'));
+        /** @var SimpleXMLElement $grandParent */
+        $grandParent    = current($parent->xpath('parent::*'));
+        if ($grandParent->getName() === 'config') {
             return 'section';
         }
 
@@ -171,12 +154,9 @@ HELP;
     }
 
     /**
-     * @param object $match
-     *
-     * @return string
      * @throws RuntimeException
      */
-    protected function _getPhpMageStoreConfigPathFromMatch($match)
+    protected function _getPhpMageStoreConfigPathFromMatch(object $match): string
     {
         switch ($match->type) {
             case 'section':
@@ -208,16 +188,13 @@ HELP;
     }
 
     /**
-     * @param object $match
-     *
-     * @return string
      * @throws RuntimeException
      */
-    protected function _getPathFromMatch($match)
+    protected function _getPathFromMatch(object $match): string
     {
         switch ($match->type) {
             case 'section':
-                return (string) $match->node->label . ' -> ... -> ...';
+                return $match->node->label . ' -> ... -> ...';
 
             case 'field':
                 $parent = current($match->node->xpath('parent::*'));

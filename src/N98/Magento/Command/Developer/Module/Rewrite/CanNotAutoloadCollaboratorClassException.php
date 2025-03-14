@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Rewrite;
 
 use Exception;
@@ -11,6 +13,4 @@ use Exception;
  *
  * @author Tom Klingenberg (https://github.com/ktomk)
  */
-class CanNotAutoloadCollaboratorClassException extends Exception
-{
-}
+class CanNotAutoloadCollaboratorClassException extends Exception {}

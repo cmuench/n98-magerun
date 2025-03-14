@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util\Template;
 
+use stdClass;
 use Twig\Environment;
 use Twig\Extension\DebugExtension;
 use Twig\Loader\ArrayLoader;
@@ -15,83 +18,52 @@ use Twig\TwigFilter;
  */
 class Twig
 {
-    /**
-     * @var Environment
-     */
-    protected $twigEnv;
+    protected Environment $twigEnv;
 
-    /**
-     * @param array $baseDirs
-     */
     public function __construct(array $baseDirs)
     {
-        $loader = new FilesystemLoader($baseDirs);
-        $this->twigEnv = new Environment($loader, ['debug' => true]);
+        $filesystemLoader = new FilesystemLoader($baseDirs);
+        $this->twigEnv = new Environment($filesystemLoader, ['debug' => true]);
         $this->addExtensions($this->twigEnv);
         $this->addFilters($this->twigEnv);
     }
 
-    /**
-     * @param string $filename
-     * @param array $variables
-     *
-     * @return string
-     */
-    public function render($filename, $variables)
+    public function render(string $filename, array $variables): string
     {
         return $this->twigEnv->render($filename, $variables);
     }
 
-    /**
-     * @param string $string
-     * @param array  $variables
-     *
-     * @return string
-     */
-    public function renderString($string, $variables)
+    public function renderString(string $string, array $variables): string
     {
-        $twig = new Environment(new ArrayLoader(['debug' => true]));
-        $this->addExtensions($twig);
-        $this->addFilters($twig);
+        $twigEnvironment = new Environment(new ArrayLoader(['debug' => true]));
+        $this->addExtensions($twigEnvironment);
+        $this->addFilters($twigEnvironment);
 
-        return $twig->render($string, $variables);
+        return $twigEnvironment->render($string, $variables);
     }
 
-    /**
-     * @param Environment $twig
-     */
-    protected function addFilters(Environment $twig)
+    protected function addFilters(Environment $twigEnvironment): void
     {
-        /**
-         * cast_to_array
-         */
-        $twig->addFilter(
-            new TwigFilter('cast_to_array', [$this, 'filterCastToArray'])
+        // cast_to_array
+        $twigEnvironment->addFilter(
+            new TwigFilter('cast_to_array', [$this, 'filterCastToArray']),
         );
     }
 
-    /**
-     * @param Environment $twig
-     */
-    protected function addExtensions(Environment $twig)
+    protected function addExtensions(Environment $twigEnvironment): void
     {
-        $twig->addExtension(new DebugExtension());
+        $twigEnvironment->addExtension(new DebugExtension());
     }
 
     /**
-     * @param \stdClass $stdClassObject
-     *
-     * @return array
+     * @param stdClass|mixed $stdClassObject
      */
-    public static function filterCastToArray($stdClassObject)
+    public static function filterCastToArray($stdClassObject): array
     {
         if (is_object($stdClassObject)) {
             $stdClassObject = get_object_vars($stdClassObject);
         }
-        if (is_array($stdClassObject)) {
-            return array_map(__METHOD__, $stdClassObject);
-        } else {
-            return $stdClassObject;
-        }
+
+        return array_map(__METHOD__, $stdClassObject);
     }
 }

@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer;
 
 use Exception;
 use N98\Magento\Command\AbstractMagentoCommand;
 use N98\Util\Filesystem;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\StringInput;
@@ -19,7 +22,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
  */
 class UninstallCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('uninstall')
@@ -28,17 +31,14 @@ class UninstallCommand extends AbstractMagentoCommand
                 'installationFolder',
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Folder where Magento is currently installed'
+                'Folder where Magento is currently installed',
             )
             ->setDescription(
-                'Uninstall magento (drops database and empties current folder or folder set via installationFolder)'
+                'Uninstall magento (drops database and empties current folder or folder set via installationFolder)',
             )
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -47,10 +47,6 @@ HELP;
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
      * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -59,15 +55,15 @@ HELP;
         $this->detectMagento($output);
         $this->getApplication()->setAutoExit(false);
 
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
 
         $shouldUninstall = $input->getOption('force');
         if (!$shouldUninstall) {
-            $question = new ConfirmationQuestion(
+            $confirmationQuestion = new ConfirmationQuestion(
                 '<question>Really uninstall ?</question> <comment>[n]</comment>: ',
-                false
+                false,
             );
-            $shouldUninstall = $dialog->ask($input, $output, $question);
+            $shouldUninstall = $questionHelper->ask($input, $output, $confirmationQuestion);
         }
 
         if ($shouldUninstall) {
@@ -77,11 +73,13 @@ HELP;
             $output->writeln('<info>Remove directory </info><comment>' . $this->_magentoRootFolder . '</comment>');
             try {
                 $fileSystem->recursiveRemoveDirectory($this->_magentoRootFolder);
-            } catch (Exception $e) {
-                $output->writeln('<error>' . $e->getMessage() . '</error>');
+            } catch (Exception $exception) {
+                $output->writeln('<error>' . $exception->getMessage() . '</error>');
             }
+
             $output->writeln('<info>Done</info>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

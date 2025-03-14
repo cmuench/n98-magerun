@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Admin\User;
 
 use Exception;
-use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -17,10 +19,7 @@ use Symfony\Component\Console\Question\ConfirmationQuestion;
  */
 class DeleteUserCommand extends AbstractAdminUserCommand
 {
-    /**
-     * Configure
-     */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('admin:user:delete')
@@ -30,20 +29,14 @@ class DeleteUserCommand extends AbstractAdminUserCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
 
         // Username
         $id = $this->getOrAskForArgument('id', $input, $output, 'Username or Email');
@@ -55,12 +48,12 @@ class DeleteUserCommand extends AbstractAdminUserCommand
 
         if (!$user->getId()) {
             $output->writeln('<error>User was not found</error>');
-            return 0;
+            return Command::FAILURE;
         }
 
         $shouldRemove = $input->getOption('force');
         if (!$shouldRemove) {
-            $shouldRemove = $dialog->ask(
+            $shouldRemove = $questionHelper->ask(
                 $input,
                 $output,
                 new ConfirmationQuestion('<question>Are you sure?</question> <comment>[n]</comment>: ', false),
@@ -71,12 +64,13 @@ class DeleteUserCommand extends AbstractAdminUserCommand
             try {
                 $user->delete();
                 $output->writeln('<info>User was successfully deleted</info>');
-            } catch (Exception $e) {
-                $output->writeln('<error>' . $e->getMessage() . '</error>');
+            } catch (Exception $exception) {
+                $output->writeln('<error>' . $exception->getMessage() . '</error>');
             }
         } else {
             $output->writeln('<error>Aborting delete</error>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

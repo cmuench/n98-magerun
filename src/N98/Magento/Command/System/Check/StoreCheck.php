@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check;
 
 use Mage_Core_Model_Store;
@@ -11,11 +13,5 @@ use Mage_Core_Model_Store;
  */
 interface StoreCheck
 {
-    /**
-     * @param ResultCollection $results
-     * @param Mage_Core_Model_Store $store
-     *
-     * @return void
-     */
-    public function check(ResultCollection $results, Mage_Core_Model_Store $store);
+    public function check(ResultCollection $resultCollection, Mage_Core_Model_Store $mageCoreModelStore): void;
 }

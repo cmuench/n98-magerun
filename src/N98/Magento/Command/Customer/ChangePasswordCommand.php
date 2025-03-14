@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Customer;
 
 use Exception;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +19,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class ChangePasswordCommand extends AbstractCustomerCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('customer:change-password')
@@ -27,9 +30,6 @@ class ChangePasswordCommand extends AbstractCustomerCommand
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -37,17 +37,11 @@ Website parameter must only be given if more than one websites are available.
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         // Password
@@ -64,11 +58,11 @@ HELP;
         $website = $parameterHelper->askWebsite($input, $output);
 
         $customer = $this->getCustomerModel()
-            ->setWebsiteId($website->getId())
+            ->setWebsiteId((int) $website->getId())
             ->loadByEmail($email);
         if ($customer->getId() <= 0) {
             $output->writeln('<error>Customer was not found</error>');
-            return 0;
+            return Command::FAILURE;
         }
 
         try {
@@ -76,12 +70,14 @@ HELP;
             if (is_array($result)) {
                 throw new RuntimeException(implode(PHP_EOL, $result));
             }
+
             $customer->setPassword($password);
             $customer->save();
             $output->writeln('<info>Password successfully changed</info>');
-        } catch (Exception $e) {
-            $output->writeln('<error>' . $e->getMessage() . '</error>');
+        } catch (Exception $exception) {
+            $output->writeln('<error>' . $exception->getMessage() . '</error>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

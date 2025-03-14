@@ -24,29 +24,17 @@ class InlineAdminCommand extends AbstractMagentoStoreConfigCommand
      */
     protected static $defaultDescription = 'Toggle inline translation tool for admin';
 
-    /**
-     * @var string
-     */
-    protected $configPath = 'dev/translate_inline/active_admin';
+    protected string $configPath = 'dev/translate_inline/active_admin';
 
-    /**
-     * @var string
-     */
-    protected $toggleComment = 'Inline Translation (Admin)';
+    protected string $toggleComment = 'Inline Translation (Admin)';
 
-    /**
-     * @var string
-     */
-    protected $scope = self::SCOPE_GLOBAL;
+    protected string $scope = self::SCOPE_GLOBAL;
 
     /**
      * If required, handle the output and possible change of the developer IP restrictions
-     *
-     * @param Mage_Core_Model_Store $store
-     * @param bool $disabled
      */
-    protected function _afterSave(Mage_Core_Model_Store $store, bool $disabled): void
+    protected function _afterSave(Mage_Core_Model_Store $mageCoreModelStore, bool $disabled): void
     {
-        $this->detectAskAndSetDeveloperIp($store, $disabled);
+        $this->detectAskAndSetDeveloperIp($mageCoreModelStore, $disabled);
     }
 }

@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Customer;
 
 use Exception;
+use Mage_Core_Exception;
 use Mage_Customer_Model_Customer;
 use Mage_Customer_Model_Entity_Customer_Collection;
 use Mage_Customer_Model_Resource_Customer_Collection;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,6 +18,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
+use Throwable;
 
 /**
  * Delete customer command
@@ -22,25 +27,16 @@ use Symfony\Component\Console\Question\Question;
  */
 class DeleteCommand extends AbstractCustomerCommand
 {
-    /**
-     * @var InputInterface
-     */
-    protected $input;
+    protected InputInterface $input;
 
-    /**
-     * @var OutputInterface
-     */
-    protected $output;
+    protected OutputInterface $output;
 
-    /**
-     * @var QuestionHelper
-     */
-    protected $questionHelper;
+    protected QuestionHelper $questionHelper;
 
     /**
      * Set up options
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('customer:delete')
@@ -51,9 +47,6 @@ class DeleteCommand extends AbstractCustomerCommand
             ->setDescription('Delete Customer/s');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -68,25 +61,19 @@ n98-magerun customer:delete --range             <info># Will prompt for start an
 HELP;
     }
 
-    /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $this->input = $input;
         $this->output = $output;
-        $this->questionHelper = $this->getHelperSet()->get('question');
-
+        $this->questionHelper = $this->getQuestionHelper();
         // Defaults
-        $range = $all = false;
+        $range = false;
+        $all = false;
 
         $id = $this->input->getArgument('id');
         $range = $this->input->getOption('range');
@@ -105,14 +92,14 @@ HELP;
                 $all = $this->questionHelper->ask(
                     $this->input,
                     $this->output,
-                    new ConfirmationQuestion('Delete all customers?', 'n'),
+                    new ConfirmationQuestion('Delete all customers?', false),
                 );
 
                 if (!$all) {
                     $range = $this->questionHelper->ask(
                         $this->input,
                         $this->output,
-                        new ConfirmationQuestion('Delete a range of customers?', 'n'),
+                        new ConfirmationQuestion('Delete a range of customers?', false),
                     );
 
                     if (!$range) {
@@ -127,12 +114,12 @@ HELP;
         if (!$range && !$all) {
             // Single customer deletion
             if (!$id) {
-                $id = $this->questionHelper->ask($this->input, $this->output, $this->getQuestion('Customer Id'), null);
+                $id = $this->questionHelper->ask($this->input, $this->output, $this->getQuestion('Customer Id'));
             }
 
             try {
                 $customer = $this->getCustomer($id);
-            } catch (Exception $e) {
+            } catch (Exception $exception) {
                 $this->output->writeln('<error>No customer found!</error>');
                 return (int) false;
             }
@@ -177,17 +164,15 @@ HELP;
                 $this->output->writeln('<error>Aborting delete</error>');
             }
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @return bool
-     */
-    protected function shouldRemove()
+    protected function shouldRemove(): bool
     {
         $shouldRemove = $this->input->getOption('force');
         if (!$shouldRemove) {
-            $shouldRemove = $this->questionHelper->ask(
+            return $this->questionHelper->ask(
                 $this->input,
                 $this->output,
                 $this->getQuestion('Are you sure?', 'n'),
@@ -200,18 +185,16 @@ HELP;
     /**
      * @param int|string $id
      *
-     * @return \Mage_Customer_Model_Customer
-     * @throws RuntimeException
+     * @throws RuntimeException|Mage_Core_Exception
      */
-    protected function getCustomer($id)
+    protected function getCustomer($id): Mage_Customer_Model_Customer
     {
-        /** @var \Mage_Customer_Model_Customer $customer */
         $customer = $this->getCustomerModel()->load($id);
-        if (!$customer->getId()) {
+        if (!$customer->getId() && is_string($id)) {
             $parameterHelper = $this->getParameterHelper();
             $website = $parameterHelper->askWebsite($this->input, $this->output);
             $customer = $this->getCustomerModel()
-                ->setWebsiteId($website->getId())
+                ->setWebsiteId((int) $website->getId())
                 ->loadByEmail($id);
         }
 
@@ -223,63 +206,50 @@ HELP;
     }
 
     /**
-     * @param \Mage_Customer_Model_Customer $customer
-     *
      * @return true|Exception
+     * @throws Throwable
      */
-    protected function deleteCustomer(Mage_Customer_Model_Customer $customer)
+    protected function deleteCustomer(Mage_Customer_Model_Customer $mageCustomerModelCustomer)
     {
         try {
-            $customer->delete();
+            $mageCustomerModelCustomer->delete();
             $this->output->writeln(
-                sprintf('<info>%s (%s) was successfully deleted</info>', $customer->getName(), $customer->getEmail())
+                sprintf('<info>%s (%s) was successfully deleted</info>', $mageCustomerModelCustomer->getName(), $mageCustomerModelCustomer->getEmail()),
             );
             return true;
-        } catch (Exception $e) {
-            $this->output->writeln('<error>' . $e->getMessage() . '</error>');
-            return $e;
+        } catch (Exception $exception) {
+            $this->output->writeln('<error>' . $exception->getMessage() . '</error>');
+            return $exception;
         }
     }
 
     /**
      * @param Mage_Customer_Model_Entity_Customer_Collection|Mage_Customer_Model_Resource_Customer_Collection $customers
-     *
-     * @return int
      */
-    protected function batchDelete($customers)
+    protected function batchDelete($customers): int
     {
         $count = 0;
         foreach ($customers as $customer) {
             if ($this->deleteCustomer($customer) === true) {
-                $count++;
+                ++$count;
             }
         }
 
         return $count;
     }
 
-    /**
-     * @param string $answer
-     * @return string
-     */
-    public function validateInt($answer)
+    public function validateInt(string $answer): string
     {
-        if ((int)$answer === 0) {
+        if ((int) $answer === 0) {
             throw new RuntimeException(
-                'The range should be numeric and above 0 e.g. 1'
+                'The range should be numeric and above 0 e.g. 1',
             );
         }
 
         return $answer;
     }
 
-    /**
-     * @param string $message
-     * @param string $default [optional]
-     *
-     * @return Question
-     */
-    private function getQuestion($message, $default = null)
+    private function getQuestion(string $message, ?string $default = null): Question
     {
         $params = [$message];
         $pattern = '%s: ';

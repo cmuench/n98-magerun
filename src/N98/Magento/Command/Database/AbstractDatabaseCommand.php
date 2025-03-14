@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Database;
 
 use N98\Magento\Command\AbstractMagentoCommand;
 use N98\Magento\Command\Database\Compressor\AbstractCompressor;
 use N98\Magento\Command\Database\Compressor\Compressor;
 use N98\Magento\DbSettings;
+use PDO;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -15,45 +18,33 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 abstract class AbstractDatabaseCommand extends AbstractMagentoCommand
 {
-    /**
-     * @var array|DbSettings
-     */
-    protected $dbSettings;
+    protected DbSettings $dbSettings;
 
-    /**
-     * @var bool
-     */
-    protected $isSocketConnect = false;
+    protected bool $isSocketConnect = false;
 
-    /**
-     * @param OutputInterface $output
-     * @param null $connectionNode
-     */
-    protected function detectDbSettings(OutputInterface $output, $connectionNode = null)
+    protected function detectDbSettings(OutputInterface $output, ?string $connectionNode = null): void
     {
-        $database = $database = $this->getDatabaseHelper();
-        $this->dbSettings = $database->getDbSettings($output);
+        $databaseHelper     = $this->getDatabaseHelper();
+        $this->dbSettings   = $databaseHelper->getDbSettings($output);
     }
 
     /**
-     * @param $name
-     *
-     * @return \PDO|void
+     * @return PDO|null
      */
-    public function __get($name)
+    public function __get(string $name)
     {
-        if ($name == '_connection') {
+        if ($name === '_connection') {
             // TODO(tk): deprecate
             return $this->getDatabaseHelper()->getConnection();
         }
+
+        return null;
     }
 
     /**
      * Generate help for compression
-     *
-     * @return string
      */
-    protected function getCompressionHelp()
+    protected function getCompressionHelp(): string
     {
         $messages = [];
         $messages[] = '';
@@ -66,21 +57,17 @@ abstract class AbstractDatabaseCommand extends AbstractMagentoCommand
     }
 
     /**
-     * @param string $type
-     * @return Compressor
      * @deprecated Since 1.97.29; use AbstractCompressor::create() instead
      */
-    protected function getCompressor($type)
+    protected function getCompressor(?string $type): Compressor
     {
         return AbstractCompressor::create($type);
     }
 
     /**
-     * @return string
-     *
      * @deprecated Please use database helper
      */
-    protected function getMysqlClientToolConnectionString()
+    protected function getMysqlClientToolConnectionString(): string
     {
         return $this->getDatabaseHelper()->getMysqlClientToolConnectionString();
     }
@@ -89,25 +76,19 @@ abstract class AbstractDatabaseCommand extends AbstractMagentoCommand
      * Creates a PDO DSN for the adapter from $this->_config settings.
      *
      * @see Zend_Db_Adapter_Pdo_Abstract
-     * @return string
-     *
      * @deprecated Please use database helper
      */
-    protected function _dsn()
+    protected function _dsn(): string
     {
         return $this->getDatabaseHelper()->dsn();
     }
 
     /**
-     * @param array $excludes
-     * @param array $definitions
      * @param array $resolved Which definitions where already resolved -> prevent endless loops
-     *
-     * @return array
      *
      * @deprecated Please use database helper
      */
-    protected function resolveTables(array $excludes, array $definitions, array $resolved = [])
+    protected function resolveTables(array $excludes, array $definitions, array $resolved = []): array
     {
         return $this->getDatabaseHelper()->resolveTables($excludes, $definitions, $resolved);
     }

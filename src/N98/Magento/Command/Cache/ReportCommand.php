@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Cache;
 
-use Enterprise_PageCache_Model_Cache;
 use Mage;
-use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +17,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ReportCommand extends AbstractCacheCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('cache:report')
@@ -28,48 +29,29 @@ class ReportCommand extends AbstractCacheCommand
                 'filter-tag',
                 '',
                 InputOption::VALUE_OPTIONAL,
-                'Filter output by TAG (separate multiple tags by comma)'
-            )
-            ->addOption(
-                'fpc',
-                null,
-                InputOption::VALUE_NONE,
-                'Use full page cache instead of core cache (Enterprise only!)'
+                'Filter output by TAG (separate multiple tags by comma)',
             )
             ->addFormatOption()
         ;
     }
 
-    protected function isTagFiltered($metaData, $input)
+    protected function isTagFiltered(array $metaData, InputInterface $input): bool
     {
         return (bool) count(array_intersect($metaData['tags'], explode(',', $input->getOption('filter-tag'))));
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->detectMagento($output, true);
+        $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
-        if ($input->hasOption('fpc') && $input->getOption('fpc')) {
-            if (!class_exists('\Enterprise_PageCache_Model_Cache')) {
-                throw new RuntimeException('Enterprise page cache not found');
-            }
-            $cacheInstance = Enterprise_PageCache_Model_Cache::getCacheInstance()->getFrontend();
-        } else {
-            $cacheInstance = Mage::app()->getCache();
-        }
-        /* @var \Varien_Cache_Core $cacheInstance */
+        $cacheInstance = Mage::app()->getCache();
         $cacheIds = $cacheInstance->getIds();
         $table = [];
         foreach ($cacheIds as $cacheId) {
-            if ($input->getOption('filter-id') !== null && !stristr($cacheId, (string) $input->getOption('filter-id'))) {
+            if ($input->getOption('filter-id') !== null && (in_array(stristr($cacheId, (string) $input->getOption('filter-id')), ['', '0'], true) || stristr($cacheId, (string) $input->getOption('filter-id')) === false)) {
                 continue;
             }
 
@@ -82,6 +64,7 @@ class ReportCommand extends AbstractCacheCommand
             if ($input->getOption('mtime')) {
                 $row[] = date('Y-m-d H:i:s', $metaData['mtime']);
             }
+
             if ($input->getOption('tags')) {
                 $row[] = implode(',', $metaData['tags']);
             }
@@ -93,6 +76,7 @@ class ReportCommand extends AbstractCacheCommand
         if ($input->getOption('mtime')) {
             $headers[] = 'MTIME';
         }
+
         if ($input->getOption('tags')) {
             $headers[] = 'TAGS';
         }
@@ -101,6 +85,7 @@ class ReportCommand extends AbstractCacheCommand
         $tableHelper
             ->setHeaders($headers)
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

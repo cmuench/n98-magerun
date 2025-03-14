@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util\Console\Helper;
 
 use Symfony\Component\Console\ConsoleEvents;
@@ -25,60 +27,39 @@ class IoHelper implements HelperInterface, EventSubscriberInterface
 {
     public const HELPER_NAME = 'io';
 
-    /**
-     * @var HelperSet
-     */
-    private $helperSet;
+    private HelperSet $helperSet;
 
-    /**
-     * @var OutputInterface
-     */
-    private $output;
+    private ?OutputInterface $output = null;
 
-    /**
-     * @var InputInterface
-     */
-    private $input;
+    private ?InputInterface $input = null;
 
     /**
      * @see getSubscribedEvents
-     *
-     * @param ConsoleCommandEvent $event
      */
-    public function initializeEventIo(ConsoleCommandEvent $event)
+    public function initializeEventIo(ConsoleCommandEvent $consoleCommandEvent): void
     {
-        $set = $event->getCommand()->getHelperSet();
+        $set = $consoleCommandEvent->getCommand()->getHelperSet();
         if (!$set->has(self::HELPER_NAME)) {
             return;
         }
 
-        /** @var  IoHelper $helper */
+        /** @var IoHelper $helper */
         $helper = $set->get(self::HELPER_NAME);
-        $helper->initializeIo($event->getInput(), $event->getOutput());
+        $helper->initializeIo($consoleCommandEvent->getInput(), $consoleCommandEvent->getOutput());
     }
 
-    /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     */
-    public function initializeIo(InputInterface $input, OutputInterface $output)
+    public function initializeIo(InputInterface $input, OutputInterface $output): void
     {
         $this->input = $input;
         $this->output = $output;
     }
 
-    /**
-     * @return InputInterface
-     */
-    public function getInput()
+    public function getInput(): ?InputInterface
     {
         return $this->input;
     }
 
-    /**
-     * @return OutputInterface
-     */
-    public function getOutput()
+    public function getOutput(): ?OutputInterface
     {
         return $this->output;
     }
@@ -90,11 +71,11 @@ class IoHelper implements HelperInterface, EventSubscriberInterface
     /**
      * Sets the helper set associated with this helper.
      *
-     * @param HelperSet $helperSet A HelperSet instance
+     * @param HelperSet|null $helperSet A HelperSet instance
      *
      * @api
      */
-    public function setHelperSet(HelperSet $helperSet = null)
+    public function setHelperSet(?HelperSet $helperSet = null): void
     {
         $this->helperSet = $helperSet;
     }
@@ -106,7 +87,7 @@ class IoHelper implements HelperInterface, EventSubscriberInterface
      *
      * @api
      */
-    public function getHelperSet()
+    public function getHelperSet(): HelperSet
     {
         return $this->helperSet;
     }
@@ -118,7 +99,7 @@ class IoHelper implements HelperInterface, EventSubscriberInterface
      *
      * @api
      */
-    public function getName()
+    public function getName(): string
     {
         return self::HELPER_NAME;
     }
@@ -130,7 +111,7 @@ class IoHelper implements HelperInterface, EventSubscriberInterface
     /**
      * @inheritdoc
      */
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [ConsoleEvents::COMMAND => 'initializeEventIo'];
     }

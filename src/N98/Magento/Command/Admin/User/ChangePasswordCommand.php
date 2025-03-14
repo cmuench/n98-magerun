@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Admin\User;
 
 use Exception;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +19,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class ChangePasswordCommand extends AbstractAdminUserCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('admin:user:change-password')
@@ -26,31 +29,24 @@ class ChangePasswordCommand extends AbstractAdminUserCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
-        $dialog = $this->getQuestionHelper();
+        $questionHelper = $this->getQuestionHelper();
 
         // Username
         if (($username = $input->getArgument('username')) == null) {
-            $username = $dialog->ask($input, $output, new Question('<question>Username:</question> '));
+            $username = $questionHelper->ask($input, $output, new Question('<question>Username:</question> '));
         }
 
         $user = $this->getUserModel()->loadByUsername($username);
         if ($user->getId() <= 0) {
             $output->writeln('<error>User was not found</error>');
-
-            return 0;
+            return Command::FAILURE;
         }
 
         // Password
@@ -58,7 +54,7 @@ class ChangePasswordCommand extends AbstractAdminUserCommand
             $question = new Question('<question>Password:</question> ');
             $question->setHidden(true);
             $question->setHiddenFallback(false);
-            $password = $dialog->ask($input, $output, $question);
+            $password = $questionHelper->ask($input, $output, $question);
         }
 
         try {
@@ -66,12 +62,14 @@ class ChangePasswordCommand extends AbstractAdminUserCommand
             if (is_array($result)) {
                 throw new RuntimeException(implode(PHP_EOL, $result));
             }
+
             $user->setPassword($password);
             $user->save();
             $output->writeln('<info>Password successfully changed</info>');
-        } catch (Exception $e) {
-            $output->writeln('<error>' . $e->getMessage() . '</error>');
+        } catch (Exception $exception) {
+            $output->writeln('<error>' . $exception->getMessage() . '</error>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

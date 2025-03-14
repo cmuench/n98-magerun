@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Util;
 
 /**
- * Utility class to snapshot a set of autoloaders and restore any of the snapshot if removed.
+ * Utility class to snapshot a set of autoloader and restore any of the snapshot if removed.
  *
  * Based on SPL autoloader.
  *
@@ -14,7 +16,7 @@ namespace N98\Util;
 class AutoloadRestorer
 {
     /**
-     * @var array
+     * @var array|false
      */
     private $snapshot;
 
@@ -26,23 +28,28 @@ class AutoloadRestorer
     /**
      * restore all autoload callbacks that have been unregistered
      */
-    public function restore()
+    public function restore(): void
     {
         $unregisteredLoaders = $this->getUnregisteredLoaders();
-
-        foreach ($unregisteredLoaders as $callback) {
-            spl_autoload_register($callback);
+        foreach ($unregisteredLoaders as $unregisteredLoader) {
+            spl_autoload_register($unregisteredLoader);
         }
     }
 
-    private function getUnregisteredLoaders()
+    private function getUnregisteredLoaders(): array
     {
-        $unregistered = [];
-        $current = spl_autoload_functions();
+        $unregistered   = [];
+        $current        = spl_autoload_functions();
+
+        if (!$this->snapshot || $current === [] || $current === false) {
+            return $unregistered;
+        }
+
         foreach ($this->snapshot as $callback) {
             if (in_array($callback, $current, true)) {
                 continue;
             }
+
             $unregistered[] = $callback;
         }
 

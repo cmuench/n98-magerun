@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento;
 
 use ArrayIterator;
@@ -20,12 +22,9 @@ use Traversable;
  */
 class Modules implements IteratorAggregate, Countable
 {
-    /**
-     * @var array
-     */
-    private $list;
+    private ?array $list;
 
-    public function __construct(array $list = null)
+    public function __construct(?array $list = null)
     {
         if (null === $list) {
             $list = [];
@@ -34,20 +33,25 @@ class Modules implements IteratorAggregate, Countable
         $this->list = $list;
     }
 
-    /**
-     * @return Modules
-     */
-    public function findInstalledModules()
+    public function findInstalledModules(): Modules
     {
         $list = [];
 
-        $modules = Mage::app()->getConfig()->getNode('modules')->asArray();
-        foreach ($modules as $moduleName => $moduleInfo) {
-            $codePool = $moduleInfo['codePool'] ?? '';
-            $version = $moduleInfo['version'] ?? '';
-            $active = $moduleInfo['active'] ?? '';
+        $modulesNode = Mage::app()->getConfig()->getNode('modules');
+        if ($modulesNode) {
+            $modules = $modulesNode->asArray();
+            foreach ($modules as $moduleName => $moduleInfo) {
+                $codePool   = $moduleInfo['codePool'] ?? '';
+                $version    = $moduleInfo['version'] ?? '';
+                $active     = $moduleInfo['active'] ?? '';
 
-            $list[] = ['codePool' => trim($codePool), 'Name'     => trim($moduleName), 'Version'  => trim($version), 'Status'   => StringTyped::formatActive($active)];
+                $list[] = [
+                    'codePool' => trim($codePool),
+                    'Name'     => trim($moduleName),
+                    'Version'  => trim($version),
+                    'Status'   => StringTyped::formatActive($active),
+                ];
+            }
         }
 
         return new Modules($list);
@@ -55,11 +59,8 @@ class Modules implements IteratorAggregate, Countable
 
     /**
      * Filter modules by codepool, status and vendor if such options were inputted by user
-     *
-     * @param InputInterface $input
-     * @return Modules
      */
-    public function filterModules(InputInterface $input)
+    public function filterModules(InputInterface $input): Modules
     {
         $filtered = $this->list;
 
@@ -72,7 +73,7 @@ class Modules implements IteratorAggregate, Countable
         }
 
         if ($input->getOption('vendor')) {
-            $filtered = ArrayFunctions::matrixFilterStartswith($filtered, 'Name', $input->getOption('vendor'));
+            $filtered = ArrayFunctions::matrixFilterStartsWith($filtered, 'Name', $input->getOption('vendor'));
         }
 
         return new self($filtered);

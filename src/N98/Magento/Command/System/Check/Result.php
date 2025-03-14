@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check;
 
 use LogicException;
@@ -26,38 +28,26 @@ class Result
      */
     public const STATUS_WARNING = 'warning';
 
-    /**
-     * @var string
-     */
-    protected $_status;
+    protected string $_status;
 
-    /**
-     * @var array[string]
-     */
-    protected $_message;
+    protected string $_message;
 
-    /**
-     * @var string
-     */
-    protected $_resultGroup;
+    protected string $_resultGroup;
 
-    public function __construct($status = self::STATUS_OK, $message = '', $resultGroup = '')
+    public function __construct(string $status = self::STATUS_OK, string $message = '', string $resultGroup = '')
     {
-        $this->_status = $status;
-        $this->_message = $message;
+        $this->_status      = $status;
+        $this->_message     = $message;
         $this->_resultGroup = $resultGroup;
     }
 
-    /**
-     * @return boolean
-     */
-    public function isValid()
+    public function isValid(): bool
     {
         return $this->_status === self::STATUS_OK;
     }
 
     /**
-     * @param boolean|string $status
+     * @param bool|string $status
      * @return $this
      */
     public function setStatus($status)
@@ -68,19 +58,15 @@ class Result
 
         if (!in_array($status, [self::STATUS_OK, self::STATUS_ERROR, self::STATUS_WARNING])) {
             throw new LogicException(
-                'Wrong status was given. Use constants: Result::OK, Result::ERROR, Result::WARNING'
+                'Wrong status was given. Use constants: Result::OK, Result::ERROR, Result::WARNING',
             );
         }
 
         $this->_status = $status;
-
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getStatus()
+    public function getStatus(): string
     {
         return $this->_status;
     }
@@ -94,28 +80,20 @@ class Result
     }
 
     /**
-     * @param string $message
      * @return $this
      */
-    public function setMessage($message)
+    public function setMessage(string $message)
     {
         $this->_message = $message;
-
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getResultGroup()
+    public function getResultGroup(): string
     {
         return $this->_resultGroup;
     }
 
-    /**
-     * @param string $resultGroup
-     */
-    public function setResultGroup($resultGroup)
+    public function setResultGroup(string $resultGroup): void
     {
         $this->_resultGroup = $resultGroup;
     }

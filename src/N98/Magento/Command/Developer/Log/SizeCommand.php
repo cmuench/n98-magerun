@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Log;
 
 use N98\Util\Filesystem;
 use RuntimeException;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -16,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class SizeCommand extends AbstractLogCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:log:size')
@@ -26,25 +29,17 @@ class SizeCommand extends AbstractLogCommand
     }
 
     /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
      * @throws RuntimeException
-     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $fileName = $input->getArgument('log_filename');
-        if ($fileName === null) {
-            $path = $this->askLogFile($input, $output);
-        } else {
-            $path = $this->getLogDir() . DIRECTORY_SEPARATOR . $fileName;
-        }
+        $path = $fileName === null ? $this->askLogFile($input, $output) : $this->getLogDir() . DIRECTORY_SEPARATOR . $fileName;
 
         if ($this->logfileExists(basename($path))) {
             $size = @filesize($path);
@@ -59,8 +54,9 @@ class SizeCommand extends AbstractLogCommand
         if ($input->getOption('human')) {
             $output->writeln(Filesystem::humanFileSize($size));
         } else {
-            $output->writeln("$size");
+            $output->writeln('' . $size);
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Check\Settings;
 
 /**
@@ -9,5 +11,5 @@ namespace N98\Magento\Command\System\Check\Settings;
  */
 class SecureBaseUrlCheck extends BaseUrlCheckAbstract
 {
-    protected $class = 'secure';
+    protected string $class = 'secure';
 }

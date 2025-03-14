@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Eav\Attribute\Create;
 
 use Symfony\Component\Console\Helper\QuestionHelper;
@@ -9,26 +11,28 @@ use Symfony\Component\Console\Question\Question;
 use N98\Magento\Command\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class DummyCommandTest extends TestCase
+final class DummyCommandTest extends TestCase
 {
     public function testExecute()
     {
         $application = $this->getApplication();
         $application->add(new DummyCommand());
+
         $command = $application->find('eav:attribute:create-dummy-values');
         $commandTester = new CommandTester($command);
 
         $commandTester->execute(
-            ['command'       => $command->getName(), 'locale'        => 'en_US', 'attribute-id'  => 92, 'values-type'   => 'int', 'values-number' => 1]
+            ['command'       => $command->getName(), 'locale'        => 'en_US', 'attribute-id'  => 92, 'values-type'   => 'int', 'values-number' => 1],
         );
 
-        self::assertMatchesRegularExpression('/ATTRIBUTE VALUE: \'(.+)\' ADDED!/', $commandTester->getDisplay());
+        $this->assertMatchesRegularExpression("/ATTRIBUTE VALUE: '(.+)' ADDED!/", $commandTester->getDisplay());
     }
 
     public function testmanageArguments()
     {
         $application = $this->getApplication();
         $application->add(new DummyCommand());
+
         $command = $application->find('eav:attribute:create-dummy-values');
 
         $dialog = $this->getMockBuilder(QuestionHelper::class)
@@ -42,7 +46,7 @@ class DummyCommandTest extends TestCase
                ->with(
                    self::isInstanceOf(InputInterface::class),
                    self::isInstanceOf(OutputInterface::class),
-                   self::isInstanceOf(Question::class)
+                   self::isInstanceOf(Question::class),
                )
                ->willReturn(92);
 
@@ -52,7 +56,7 @@ class DummyCommandTest extends TestCase
                ->with(
                    self::isInstanceOf(InputInterface::class),
                    self::isInstanceOf(OutputInterface::class),
-                   self::isInstanceOf(Question::class)
+                   self::isInstanceOf(Question::class),
                )
                ->willReturn('int');
 
@@ -62,7 +66,7 @@ class DummyCommandTest extends TestCase
                ->with(
                    self::isInstanceOf(InputInterface::class),
                    self::isInstanceOf(OutputInterface::class),
-                   self::isInstanceOf(Question::class)
+                   self::isInstanceOf(Question::class),
                )
                ->willReturn(1);
 
@@ -72,12 +76,12 @@ class DummyCommandTest extends TestCase
         $commandTester = new CommandTester($command);
 
         $commandTester->execute(
-            ['command'                    => $command->getName()]
+            ['command'                    => $command->getName()],
         );
 
         $arguments = $commandTester->getInput()->getArguments();
-        self::assertArrayHasKey('attribute-id', $arguments);
-        self::assertArrayHasKey('values-type', $arguments);
-        self::assertArrayHasKey('values-number', $arguments);
+        $this->assertArrayHasKey('attribute-id', $arguments);
+        $this->assertArrayHasKey('values-type', $arguments);
+        $this->assertArrayHasKey('values-number', $arguments);
     }
 }

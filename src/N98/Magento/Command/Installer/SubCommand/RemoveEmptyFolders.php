@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer\SubCommand;
 
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
@@ -13,10 +15,7 @@ use Symfony\Component\Finder\Finder;
  */
 class RemoveEmptyFolders extends AbstractSubCommand
 {
-    /**
-     * @return void
-     */
-    public function execute()
+    public function execute(): void
     {
         if (is_dir(getcwd() . '/vendor')) {
             $finder = new Finder();

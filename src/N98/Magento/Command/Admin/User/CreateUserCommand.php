@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Admin\User;
 
-use Mage_Backend_Model_Acl_Config;
-use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,7 +17,7 @@ use Symfony\Component\Console\Question\Question;
  */
 class CreateUserCommand extends AbstractAdminUserCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('admin:user:create')
@@ -30,11 +31,6 @@ class CreateUserCommand extends AbstractAdminUserCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
@@ -54,19 +50,19 @@ class CreateUserCommand extends AbstractAdminUserCommand
                 $role = $this->getRoleModel()->load($roleName, 'role_name');
                 if (!$role->getId()) {
                     $output->writeln('<error>Role was not found</error>');
-                    return 0;
+                    return Command::FAILURE;
                 }
             } else {
                 // create new role if not yet existing
                 $role = $this->getRoleModel()->load('Development', 'role_name');
                 if (!$role->getId()) {
-                    $role->setName('Development')
+                    $role->setName('Development') # @phpstan-ignore method.notFound (missing in current OpenMage)
                         ->setRoleType('G')
                         ->save();
 
                     // give "all" privileges to role
                     $this->getRulesModel()
-                        ->setRoleId($role->getId())
+                        ->setRoleId((int) $role->getId())
                         ->setResources(['all'])
                         ->saveRel();
 
@@ -76,7 +72,14 @@ class CreateUserCommand extends AbstractAdminUserCommand
 
             // create new user
             $user = $this->getUserModel()
-                ->setData(['username'  => $username, 'firstname' => $firstname, 'lastname'  => $lastname, 'email'     => $email, 'password'  => $password, 'is_active' => 1])->save();
+                ->setData([
+                    'username'  => $username,
+                    'firstname' => $firstname,
+                    'lastname'  => $lastname,
+                    'email'     => $email,
+                    'password'  => $password,
+                    'is_active' => 1,
+                ])->save();
 
             $user->setRoleIds([$role->getId()])
                 ->setRoleUserId($user->getUserId())
@@ -84,6 +87,7 @@ class CreateUserCommand extends AbstractAdminUserCommand
 
             $output->writeln('<info>User <comment>' . $username . '</comment> successfully created</info>');
         }
-        return 0;
+
+        return Command::SUCCESS;
     }
 }

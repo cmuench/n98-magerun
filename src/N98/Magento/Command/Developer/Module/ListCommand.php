@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module;
 
 use N98\Magento\Command\AbstractMagentoCommand;
 use N98\Magento\Modules;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,7 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractMagentoCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:module:list')
@@ -27,12 +30,6 @@ class ListCommand extends AbstractMagentoCommand
             ->addFormatOption();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
@@ -40,33 +37,29 @@ class ListCommand extends AbstractMagentoCommand
         if ($input->getOption('format') === null) {
             $this->writeSection($output, 'Magento Modules');
         }
+
         $this->initMagento();
 
         $modules = $this->filterModules($input);
 
-        if (!count($modules)) {
+        if (count($modules) === 0) {
             $output->writeln('No modules match the specified criteria.');
-            return 0;
+            return Command::FAILURE;
         }
 
-        $table = $this->getTableHelper();
-        $table
+        $tableHelper = $this->getTableHelper();
+        $tableHelper
             ->setHeaders(['codePool', 'Name', 'Version', 'Status'])
             ->renderByFormat($output, iterator_to_array($modules), $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param InputInterface $input
-     *
-     * @return Modules
-     */
-    private function filterModules(InputInterface $input)
+    private function filterModules(InputInterface $input): Modules
     {
         $modules = new Modules();
-        $modules = $modules->findInstalledModules()
+        return $modules
+            ->findInstalledModules()
             ->filterModules($input);
-
-        return $modules;
     }
 }

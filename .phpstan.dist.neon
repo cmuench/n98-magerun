@@ -1,10 +1,19 @@
 includes:
     - .phpstan.dist.baseline.neon
-    - phar://phpstan.phar/conf/bleedingEdge.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-symfony/extension.neon
 parameters:
     paths:
       - src
     scanDirectories:
       - magento
-    level: 1
+    level: 7
     treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        - identifier: missingType.generics
+        - identifier: missingType.iterableValue
+        - identifier: parameterByRef.unusedType
+        - identifier: offsetAccess.notFound
+        - identifier: property.notFound
+        - identifier: property.unusedType
+        - identifier: return.unusedType

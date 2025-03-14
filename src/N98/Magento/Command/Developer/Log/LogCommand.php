@@ -23,18 +23,9 @@ class LogCommand extends AbstractMagentoStoreConfigCommand
      */
     protected static $defaultDescription = 'Toggle development log (system.log, exception.log)';
 
-    /**
-     * @var string
-     */
-    protected $toggleComment = 'Development Log';
+    protected string $toggleComment = 'Development Log';
 
-    /**
-     * @var string
-     */
-    protected $configPath = 'dev/log/active';
+    protected string $configPath = 'dev/log/active';
 
-    /**
-     * @var string
-     */
-    protected $scope = self::SCOPE_STORE_VIEW_GLOBAL;
+    protected string $scope = self::SCOPE_STORE_VIEW_GLOBAL;
 }

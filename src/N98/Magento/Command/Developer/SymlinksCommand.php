@@ -23,35 +23,15 @@ class SymlinksCommand extends AbstractMagentoStoreConfigCommand
      */
     protected static $defaultDescription = 'Toggle allow symlinks setting';
 
-    /**
-     * @var string
-     */
-    protected $toggleComment = 'Symlinks';
+    protected string $toggleComment = 'Symlinks';
 
-    /**
-     * @var string
-     */
-    protected $configPath = 'dev/template/allow_symlink';
+    protected string $configPath = 'dev/template/allow_symlink';
 
-    /**
-     * @var string
-     */
-    protected $scope = self::SCOPE_STORE_VIEW_GLOBAL;
+    protected string $scope = self::SCOPE_STORE_VIEW_GLOBAL;
 
-    /**
-     * @var string
-     */
-    protected $falseName = 'denied';
+    protected string $falseName = 'denied';
 
-    /**
-     * @var string
-     */
-    protected $trueName = 'allowed';
+    protected string $trueName = 'allowed';
 
-    /**
-     * Add admin store to interactive prompt
-     *
-     * @var bool
-     */
-    protected $withAdminStore = true;
+    protected bool $withAdminStore = true;
 }

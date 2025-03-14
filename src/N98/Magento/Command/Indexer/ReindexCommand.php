@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Indexer;
 
 use InvalidArgumentException;
-use Mage_Index_Model_Process;
 use N98\Util\BinaryString;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -17,7 +19,7 @@ use Symfony\Component\Console\Question\ChoiceQuestion;
  */
 class ReindexCommand extends AbstractIndexerCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('index:reindex')
@@ -25,9 +27,6 @@ class ReindexCommand extends AbstractIndexerCommand
             ->setDescription('Reindex a magento index by code');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -36,7 +35,7 @@ Index by indexer code. Code is optional. If you don't specify a code you can pic
    $ n98-magerun.phar index:reindex [code]
 
 
-Since 1.75.0 it's possible to run mutiple indexers by seperating code with a comma.
+Since 1.75.0 it's possible to run multiple indexers by separating code with a comma.
 
 i.e.
 
@@ -47,17 +46,12 @@ indexer.
 HELP;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $this->detectMagento($output, true);
+        $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $this->writeSection($output, 'Reindex');
@@ -72,55 +66,41 @@ HELP;
 
         $processes = $this->getProcessesByIndexCodes($indexCodes);
         if (!$this->executeProcesses($output, $processes)) {
-            return 1; // end with error
+            return Command::FAILURE;
         }
 
-        return 0;
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param $indexCodes
-     *
-     * @return array
-     */
-    private function getProcessesByIndexCodes($indexCodes)
+    private function getProcessesByIndexCodes(array $indexCodes): array
     {
         $processes = [];
         foreach ($indexCodes as $indexCode) {
-            /* @var Mage_Index_Model_Process $process */
             $process = $this->getIndexerModel()->getProcessByCode($indexCode);
             if (!$process) {
                 throw new InvalidArgumentException(sprintf('Indexer "%s" was not found!', $indexCode));
             }
+
             $processes[] = $process;
         }
+
         return $processes;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return array
-     */
-    private function askForIndexCodes(InputInterface $input, OutputInterface $output)
+    private function askForIndexCodes(InputInterface $input, OutputInterface $output): array
     {
         $indexerList = $this->getIndexerList();
         $choices = [];
-        foreach ($indexerList as $key => $indexer) {
+        foreach ($indexerList as $indexer) {
             $choices[] = sprintf(
                 '%-40s <info>(last runtime: %s)</info>',
                 $indexer['code'],
-                $indexer['last_runtime']
+                $indexer['last_runtime'],
             );
         }
 
         $validator = function ($typeInput) use ($indexerList) {
-            if (strstr($typeInput, ',')) {
-                $typeInputs = BinaryString::trimExplodeEmpty(',', $typeInput);
-            } else {
-                $typeInputs = [$typeInput];
-            }
+            $typeInputs = strstr($typeInput, ',') ? BinaryString::trimExplodeEmpty(',', $typeInput) : [$typeInput];
 
             $returnCodes = [];
             foreach ($typeInputs as $typeInput) {
@@ -134,13 +114,13 @@ HELP;
             return $returnCodes;
         };
 
-        $dialog = $this->getQuestionHelper();
-        $question = new ChoiceQuestion(
+        $questionHelper = $this->getQuestionHelper();
+        $choiceQuestion = new ChoiceQuestion(
             '<question>Please select a indexer:</question> ',
-            $choices
+            $choices,
         );
-        $question->setValidator($validator);
+        $choiceQuestion->setValidator($validator);
 
-        return $dialog->ask($input, $output, $question);
+        return $questionHelper->ask($input, $output, $choiceQuestion);
     }
 }

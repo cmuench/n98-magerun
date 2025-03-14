@@ -1,7 +1,6 @@
 <?php
-/*
- * @author Tom Klingenberg <https://github.com/ktomk>
- */
+
+declare(strict_types=1);
 
 namespace N98\Magento\Application;
 
@@ -21,65 +20,41 @@ use Symfony\Component\Console\Output\OutputInterface;
  * Class Config
  *
  * Class representing the application configuration. Created to factor out configuration related application
- * functionality from @see \N98\Magento\Application
+ * functionality from @see Application
  *
  * @package N98\Magento\Application
+ * @author Tom Klingenberg <https://github.com/ktomk>
  */
 class Config
 {
     public const PSR_0 = 'PSR-0';
+
     public const PSR_4 = 'PSR-4';
 
     public const COMMAND_CLASS = 'Symfony\Component\Console\Command\Command';
 
-    /**
-     * @var array config data
-     */
-    private $config = [];
+    private array $config = [];
 
-    /**
-     * @var array
-     */
-    private $partialConfig = [];
+    private array $partialConfig = [];
 
-    /**
-     * @var ConfigurationLoader
-     */
-    private $loader;
+    private ?ConfigurationLoader $configurationLoader = null;
 
-    /**
-     * @var array
-     */
-    private $initConfig = [];
+    private array $initConfig;
 
-    /**
-     * @var boolean
-     */
-    private $isPharMode;
+    private bool $isPharMode;
 
-    /**
-     * @var OutputInterface
-     */
-    private $output;
+    private OutputInterface $output;
 
-    /**
-     * Config constructor.
-     *
-     * @param array $initConfig
-     * @param bool $isPharMode
-     * @param OutputInterface $output [optional]
-     */
-    public function __construct(array $initConfig = [], $isPharMode = false, OutputInterface $output = null)
+    public function __construct(array $initConfig = [], bool $isPharMode = false, ?OutputInterface $output = null)
     {
         $this->initConfig = $initConfig;
-        $this->isPharMode = (bool) $isPharMode;
-        $this->output = $output ?: new NullOutput();
+        $this->isPharMode = $isPharMode;
+        $this->output = $output instanceof OutputInterface ? $output : new NullOutput();
     }
 
     /**
      * alias magerun command in input from config
      *
-     * @param InputInterface $input
      * @return ArgvInput|InputInterface
      */
     public function checkConfigCommandAlias(InputInterface $input)
@@ -88,15 +63,17 @@ class Config
             if (!is_array($alias)) {
                 continue;
             }
+
             $aliasCommandName = key($alias);
             if ($input->getFirstArgument() !== $aliasCommandName) {
                 continue;
             }
+
             $aliasCommandParams = array_slice(
                 BinaryString::trimExplodeEmpty(' ', $alias[$aliasCommandName]),
-                1
+                1,
             );
-            if (0 === count($aliasCommandParams)) {
+            if ([] === $aliasCommandParams) {
                 continue;
             }
 
@@ -105,7 +82,7 @@ class Config
             $newArgv = array_merge(
                 array_slice($oldArgv, 0, 2),
                 $aliasCommandParams,
-                array_slice($oldArgv, 2)
+                array_slice($oldArgv, 2),
             );
             $input = new ArgvInput($newArgv);
         }
@@ -113,10 +90,7 @@ class Config
         return $input;
     }
 
-    /**
-     * @param Command $command
-     */
-    public function registerConfigCommandAlias(Command $command)
+    public function registerConfigCommandAlias(Command $command): void
     {
         foreach ($this->getArray(['commands', 'aliases']) as $alias) {
             if (!is_array($alias)) {
@@ -134,36 +108,35 @@ class Config
         }
     }
 
-    /**
-     * @param Application $application
-     */
-    public function registerCustomCommands(Application $application)
+    public function registerCustomCommands(Application $application): void
     {
         foreach ($this->getArray(['commands', 'customCommands']) as $commandClass) {
             $commandName = null;
             if (is_array($commandClass)) {
                 // Support for key => value (name -> class)
-                $commandName = key($commandClass);
-                $commandClass = current($commandClass);
+                $commandName    = (string) key($commandClass);
+                $commandClass   = current($commandClass);
             }
-            if (null === $command = $this->newCommand($commandClass, $commandName)) {
+
+            $command = $this->newCommand($commandClass, $commandName);
+            if (is_null($command)) {
                 $this->output->writeln(
                     sprintf(
                         '<error>Can not add nonexistent command class "%s" as command to the application</error>',
-                        $commandClass
-                    )
+                        $commandClass,
+                    ),
                 );
                 $this->debugWriteln(
                     'Please check the configuration files contain the correct class-name. If the ' .
-                    'class-name is correct, check autoloader configurations.'
+                    'class-name is correct, check autoloader configurations.',
                 );
             } else {
                 $this->debugWriteln(
                     sprintf(
                         '<debug>Add command </debug> <info>%s</info> -> <comment>%s</comment>',
                         $command->getName(),
-                        get_class($command)
-                    )
+                        get_class($command),
+                    ),
                 );
                 $application->add($command);
             }
@@ -171,26 +144,25 @@ class Config
     }
 
     /**
-     * @param string $className
-     * @param string|null $commandName
-     * @return Command
+     * @param mixed $className
      * @throws InvalidArgumentException
      */
-    private function newCommand($className, $commandName)
+    private function newCommand($className, ?string $commandName): ?Command
     {
-        if (!(is_string($className) || is_object($className))) {
+        if (!is_string($className) && !is_object($className)) {
             throw new InvalidArgumentException(
-                sprintf('Command classname must be string, %s given', gettype($className))
+                sprintf('Command classname must be string, %s given', gettype($className)),
             );
         }
 
-        if (!class_exists($className)) {
+        if (is_string($className) && !class_exists($className)) {
             return null;
         }
 
         if (false === is_subclass_of($className, self::COMMAND_CLASS, true)) {
+            $className = is_object($className) ? get_class($className) : $className;
             throw new InvalidArgumentException(
-                sprintf('Class "%s" is not a Command (subclass of "%s")', $className, self::COMMAND_CLASS)
+                sprintf('Class "%s" is not a Command (subclass of "%s")', $className, self::COMMAND_CLASS),
             );
         }
 
@@ -205,30 +177,23 @@ class Config
 
     /**
      * Adds autoloader prefixes from user's config
-     *
-     * @param ClassLoader $autoloader
      */
-    public function registerCustomAutoloaders(ClassLoader $autoloader)
+    public function registerCustomAutoloaders(ClassLoader $classLoader): void
     {
         $mask = '<debug>Registered %s autoloader </debug> <info>%s</info> -> <comment>%s</comment>';
 
         foreach ($this->getArray('autoloaders') as $prefix => $paths) {
-            $paths = (array) $paths;
-            $this->debugWriteln(sprintf($mask, self::PSR_0, OutputFormatter::escape($prefix), implode(',', $paths)));
-            $autoloader->add($prefix, $paths);
+            $this->debugWriteln(sprintf($mask, self::PSR_0, OutputFormatter::escape($prefix), implode(',', (array) $paths)));
+            $classLoader->add($prefix, $paths);
         }
 
         foreach ($this->getArray('autoloaders_psr4') as $prefix => $paths) {
-            $paths = (array) $paths;
-            $this->debugWriteln(sprintf($mask, self::PSR_4, OutputFormatter::escape($prefix), implode(',', $paths)));
-            $autoloader->addPsr4($prefix, $paths);
+            $this->debugWriteln(sprintf($mask, self::PSR_4, OutputFormatter::escape($prefix), implode(',', (array) $paths)));
+            $classLoader->addPsr4($prefix, $paths);
         }
     }
 
-    /**
-     * @param array $config
-     */
-    public function setConfig(array $config)
+    public function setConfig(array $config): void
     {
         $this->config = $config;
     }
@@ -237,9 +202,8 @@ class Config
      * Get config array (whole or in part)
      *
      * @param string|array $key
-     * @return array
      */
-    public function getConfig($key = null)
+    public function getConfig($key = null): array
     {
         if (null === $key) {
             return $this->config;
@@ -248,47 +212,36 @@ class Config
         return $this->getArray($key);
     }
 
-    /**
-     * @param ConfigurationLoader $configurationLoader
-     */
-    public function setLoader(ConfigurationLoader $configurationLoader)
+    public function setLoader(ConfigurationLoader $configurationLoader): void
     {
-        $this->loader = $configurationLoader;
+        $this->configurationLoader = $configurationLoader;
     }
 
-    /**
-     * @return ConfigurationLoader
-     */
-    public function getLoader()
+    public function getLoader(): ConfigurationLoader
     {
-        if (!$this->loader) {
-            $this->loader = $this->createLoader($this->initConfig, $this->isPharMode, $this->output);
+        if (!$this->configurationLoader instanceof ConfigurationLoader) {
+            $this->configurationLoader = $this->createLoader($this->initConfig, $this->isPharMode, $this->output);
             $this->initConfig = [];
         }
 
-        return $this->loader;
+        return $this->configurationLoader;
     }
 
-    public function load()
+    public function load(): void
     {
         $this->config = $this->getLoader()->toArray();
     }
 
-    /**
-     * @param bool $loadExternalConfig
-     */
-    public function loadPartialConfig($loadExternalConfig)
+    public function loadPartialConfig(bool $loadExternalConfig): void
     {
-        $loader = $this->getLoader();
-        $this->partialConfig = $loader->getPartialConfig($loadExternalConfig);
+        $configurationLoader = $this->getLoader();
+        $this->partialConfig = $configurationLoader->getPartialConfig($loadExternalConfig);
     }
 
     /**
      * Get names of sub-folders to be scanned during Magento detection
-     *
-     * @return array
      */
-    public function getDetectSubFolders()
+    public function getDetectSubFolders(): array
     {
         if (isset($this->partialConfig['detect']['subFolders'])) {
             return $this->partialConfig['detect']['subFolders'];
@@ -297,26 +250,13 @@ class Config
         return [];
     }
 
-    /**
-     * @param array $initConfig
-     * @param bool $isPharMode
-     * @param OutputInterface $output
-     *
-     * @return ConfigurationLoader
-     */
-    public function createLoader(array $initConfig, $isPharMode, OutputInterface $output)
+    public function createLoader(array $initConfig, bool $isPharMode, OutputInterface $output): ConfigurationLoader
     {
         $config = ArrayFunctions::mergeArrays($this->config, $initConfig);
-
-        $loader = new ConfigurationLoader($config, $isPharMode, $output);
-
-        return $loader;
+        return new ConfigurationLoader($config, $isPharMode, $output);
     }
 
-    /**
-     * @param string $message
-     */
-    private function debugWriteln($message)
+    private function debugWriteln(string $message): void
     {
         $output = $this->output;
         if (OutputInterface::VERBOSITY_DEBUG <= $output->getVerbosity()) {
@@ -328,10 +268,8 @@ class Config
      * Get array from config, default to an empty array if not set
      *
      * @param string|array $key
-     * @param array $default [optional]
-     * @return array
      */
-    private function getArray($key, $default = [])
+    private function getArray($key, array $default = []): array
     {
         $result = $this->traverse((array) $key);
         if (null === $result) {
@@ -341,7 +279,7 @@ class Config
         return $result;
     }
 
-    private function traverse(array $keys)
+    private function traverse(array $keys): ?array
     {
         $anchor = &$this->config;
         foreach ($keys as $key) {
@@ -352,6 +290,7 @@ class Config
             if (!isset($anchor[$key])) {
                 return null;
             }
+
             $anchor = &$anchor[$key];
         }
 

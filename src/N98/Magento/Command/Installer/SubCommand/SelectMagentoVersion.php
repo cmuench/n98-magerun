@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Installer\SubCommand;
 
+use InvalidArgumentException;
 use N98\Magento\Command\SubCommand\AbstractSubCommand;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 
@@ -14,10 +17,8 @@ class SelectMagentoVersion extends AbstractSubCommand
 {
     /**
      * Check PHP environment against minimal required settings modules
-     *
-     * @return void
      */
-    public function execute()
+    public function execute(): void
     {
         if ($this->input->getOption('noDownload')) {
             return;
@@ -32,14 +33,14 @@ class SelectMagentoVersion extends AbstractSubCommand
                 $choices[$key + 1] = '<comment>' . $package['name'] . '</comment> ';
             }
 
-            $question = new ChoiceQuestion('<question>Choose a magento version:</question>', $choices);
-            $question->setValidator(function ($typeInput) {
+            $choiceQuestion = new ChoiceQuestion('<question>Choose a magento version:</question>', $choices);
+            $choiceQuestion->setValidator(function ($typeInput) {
                 if (!in_array(
                     $typeInput - 1,
                     range(0, count($this->commandConfig['magento-packages']) - 1),
-                    true
+                    true,
                 )) {
-                    throw new \InvalidArgumentException('Invalid type');
+                    throw new InvalidArgumentException('Invalid type');
                 }
 
                 return $typeInput;
@@ -48,7 +49,7 @@ class SelectMagentoVersion extends AbstractSubCommand
             $type = $this->getCommand()->getQuestionHelper()->ask(
                 $this->input,
                 $this->output,
-                $question
+                $choiceQuestion,
             );
         } else {
             $type = null;
@@ -65,7 +66,7 @@ class SelectMagentoVersion extends AbstractSubCommand
             }
 
             if ($type == null) {
-                throw new \InvalidArgumentException('Unable to locate Magento version');
+                throw new InvalidArgumentException('Unable to locate Magento version');
             }
         }
 

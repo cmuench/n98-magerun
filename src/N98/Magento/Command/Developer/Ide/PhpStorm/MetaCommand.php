@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Ide\PhpStorm;
 
 use Directory;
 use Exception;
 use Mage;
+use Mage_Core_Model_Config_Element;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,35 +25,27 @@ use Varien_Simplexml_Element;
  */
 class MetaCommand extends AbstractMagentoCommand
 {
-    /**
-     * @var array
-     */
-    protected $groups = ['blocks', 'helpers', 'models', 'resource models', 'resource helpers'];
+    protected array $groups = ['blocks', 'helpers', 'models', 'resource models', 'resource helpers'];
 
     /**
      * List of supported static factory methods
-     *
-     * @var array
      */
-    protected $groupFactories = ['blocks' => ['\Mage::getBlockSingleton'], 'helpers' => ['\Mage::helper'], 'models' => ['\Mage::getModel', '\Mage::getSingleton'], 'resource helpers' => ['\Mage::getResourceHelper'], 'resource models' => ['\Mage::getResourceModel', '\Mage::getResourceSingleton']];
+    protected array $groupFactories = ['blocks' => ['\Mage::getBlockSingleton'], 'helpers' => ['\Mage::helper'], 'models' => ['\Mage::getModel', '\Mage::getSingleton'], 'resource helpers' => ['\Mage::getResourceHelper'], 'resource models' => ['\Mage::getResourceModel', '\Mage::getResourceSingleton']];
 
     /**
      * List of supported helper methods
-     *
-     * @var array
      */
-    protected $methodFactories = ['blocks' => ['\Mage_Core_Model_Layout::createBlock'], 'helpers' => ['\Mage_Admin_Model_User::_getHelper', '\Mage_Adminhtml_Controller_Rss_Abstract::_getHelper', '\Mage_Adminhtml_Tax_RuleController::_getHelperModel', '\Mage_Api_Model_User::_getHelper', '\Mage_Bundle_Model_Product_Price::_getHelperData', '\Mage_Core_Block_Abstract::helper', '\Mage_Core_Model_App::getHelper', '\Mage_Core_Model_Factory::getHelper', '\Mage_Core_Model_Layout::helper', '\Mage_Customer_AccountController::_getHelper', '\Mage_Customer_Model_Customer::_getHelper', '\Mage_ImportExport_Model_Import_Entity_Product::getHelper', '\Mage_Rss_Controller_Abstract::_getHelper', '\Mage_SalesRule_Model_Validator::_getHelper', '\Mage_Weee_Helper_Data::_getHelper', '\Mage_Weee_Model_Config_Source_Fpt_Tax::_getHelper'], 'models' => ['\Mage_Adminhtml_Tax_RuleController::_getSingletonModel', '\Mage_Catalog_Block_Product_Abstract::_getSingletonModel', '\Mage_Checkout_Helper_Cart::_getSingletonModel', '\Mage_Core_Model_Factory::getModel', '\Mage_Core_Model_Factory::getSingleton', '\Mage_Customer_AccountController::_getModel', '\Mage_SalesRule_Model_Validator::_getSingleton', '\Mage_Shipping_Model_Carrier_Tablerate::_getModel', '\Mage_Wishlist_Helper_Data::_getSingletonModel'], 'resource models' => ['\Mage_Core_Model_Factory::getResourceModel']];
+    protected array $methodFactories = ['blocks' => ['\Mage_Core_Model_Layout::createBlock'], 'helpers' => ['\Mage_Admin_Model_User::_getHelper', '\Mage_Adminhtml_Controller_Rss_Abstract::_getHelper', '\Mage_Adminhtml_Tax_RuleController::_getHelperModel', '\Mage_Api_Model_User::_getHelper', '\Mage_Bundle_Model_Product_Price::_getHelperData', '\Mage_Core_Block_Abstract::helper', '\Mage_Core_Model_App::getHelper', '\Mage_Core_Model_Factory::getHelper', '\Mage_Core_Model_Layout::helper', '\Mage_Customer_AccountController::_getHelper', '\Mage_Customer_Model_Customer::_getHelper', '\Mage_ImportExport_Model_Import_Entity_Product::getHelper', '\Mage_Rss_Controller_Abstract::_getHelper', '\Mage_SalesRule_Model_Validator::_getHelper', '\Mage_Weee_Helper_Data::_getHelper', '\Mage_Weee_Model_Config_Source_Fpt_Tax::_getHelper'], 'models' => ['\Mage_Adminhtml_Tax_RuleController::_getSingletonModel', '\Mage_Catalog_Block_Product_Abstract::_getSingletonModel', '\Mage_Checkout_Helper_Cart::_getSingletonModel', '\Mage_Core_Model_Factory::getModel', '\Mage_Core_Model_Factory::getSingleton', '\Mage_Customer_AccountController::_getModel', '\Mage_SalesRule_Model_Validator::_getSingleton', '\Mage_Shipping_Model_Carrier_Tablerate::_getModel', '\Mage_Wishlist_Helper_Data::_getSingletonModel'], 'resource models' => ['\Mage_Core_Model_Factory::getResourceModel']];
 
-    /**
-     * @var array
-     */
-    protected $missingHelperDefinitionModules = ['Backup', 'Bundle', 'Captcha', 'Catalog', 'Centinel', 'Checkout', 'Cms', 'Core', 'Customer', 'Dataflow', Directory::class, 'Downloadable', 'Eav', 'Index', 'Install', 'Log', 'Media', 'Newsletter', 'Page', 'Payment', 'Paypal', 'Persistent', 'Poll', 'Rating', 'Reports', 'Review', 'Rss', 'Rule', 'Sales', 'Shipping', 'Sitemap', 'Tag', 'Tax', 'Usa', 'Weee', 'Widget', 'Wishlist'];
+    protected array $missingHelperDefinitionModules = ['Backup', 'Bundle', 'Captcha', 'Catalog', 'Centinel', 'Checkout', 'Cms', 'Core', 'Customer', 'Dataflow', Directory::class, 'Downloadable', 'Eav', 'Index', 'Install', 'Log', 'Media', 'Newsletter', 'Page', 'Payment', 'Paypal', 'Persistent', 'Poll', 'Rating', 'Reports', 'Review', 'Rss', 'Rule', 'Sales', 'Shipping', 'Sitemap', 'Tag', 'Tax', 'Usa', 'Weee', 'Widget', 'Wishlist'];
 
     public const VERSION_OLD = 'old';
+
     public const VERSION_2017 = '2016.2+';
+
     public const VERSION_2019 = '2019.1+';
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:ide:phpstorm:meta')
@@ -58,24 +54,21 @@ class MetaCommand extends AbstractMagentoCommand
                 null,
                 InputOption::VALUE_REQUIRED,
                 'PhpStorm Meta version (' . self::VERSION_OLD . ', ' . self::VERSION_2017 . ', ' . self::VERSION_2019 . ')',
-                self::VERSION_2019
+                self::VERSION_2019,
             )
             ->addOption('stdout', null, InputOption::VALUE_NONE, 'Print to stdout instead of file .phpstorm.meta.php')
             ->setDescription('Generates meta data file for PhpStorm auto completion (default version : ' . self::VERSION_2019 . ')');
     }
 
     /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
      *
      * @internal param string $package
-     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output);
         if (!$this->initMagento()) {
-            return 0;
+            return Command::INVALID;
         }
 
         $classMaps = [];
@@ -83,9 +76,9 @@ class MetaCommand extends AbstractMagentoCommand
         foreach ($this->groups as $group) {
             $classMaps[$group] = $this->getClassMapForGroup($group, $output);
 
-            if (!$input->getOption('stdout') && count($classMaps[$group]) > 0) {
+            if (!$input->getOption('stdout') && $classMaps[$group] !== []) {
                 $output->writeln(
-                    '<info>Generated definitions for <comment>' . $group . '</comment> group</info>'
+                    '<info>Generated definitions for <comment>' . $group . '</comment> group</info>',
                 );
             }
         }
@@ -99,41 +92,32 @@ class MetaCommand extends AbstractMagentoCommand
             $this->writeToOutputV2019($input, $output, $classMaps);
         }
 
-        return 0;
+        return Command::SUCCESS;
     }
 
-    /**
-     * @param SplFileInfo $file
-     * @param string $classPrefix
-     * @return string
-     */
-    protected function getRealClassname(SplFileInfo $file, $classPrefix)
+    protected function getRealClassname(SplFileInfo $file, string $classPrefix): string
     {
         $path = $file->getRelativePathname();
         if (substr($path, -4) !== '.php') {
             throw new UnexpectedValueException(
-                sprintf('Expected that relative file %s ends with ".php"', var_export($path, true))
+                sprintf('Expected that relative file %s ends with ".php"', var_export($path, true)),
             );
         }
+
         $path = substr($path, 0, -4);
         $path = strtr($path, '\\', '/');
 
         return trim($classPrefix . '_' . strtr($path, '/', '_'), '_');
     }
 
-    /**
-     * @param SplFileInfo   $file
-     * @param string        $classPrefix
-     * @param string        $group
-     * @return string
-     */
-    protected function getClassIdentifier(SplFileInfo $file, $classPrefix, $group = '')
+    protected function getClassIdentifier(SplFileInfo $file, string $classPrefix, string $group = ''): string
     {
         $path = str_replace('.php', '', $file->getRelativePathname());
         $path = str_replace('\\', '/', $path);
+
         $parts = explode('/', $path);
         $parts = array_map('lcfirst', $parts);
-        if ($path == 'Data' && ($group == 'helpers')) {
+        if ($path == 'Data' && ($group === 'helpers')) {
             array_pop($parts);
         }
 
@@ -147,27 +131,22 @@ class MetaCommand extends AbstractMagentoCommand
      * app/code/core/Mage/Payment/Model/Paygate/Request.php             -> Mage_Paygate_Model_Authorizenet_Request
      * app/code/core/Mage/Dataflow/Model/Convert/Iterator.php           -> Mage_Dataflow_Model_Session_Adapter_Iterator
      *
-     * @param SplFileInfo     $file
-     * @param string          $className
-     * @param OutputInterface $output
-     * @return bool
+     * @return false|int
      */
-    protected function isClassDefinedInFile(SplFileInfo $file, $className, OutputInterface $output)
+    protected function isClassDefinedInFile(SplFileInfo $file, string $className, OutputInterface $output)
     {
         try {
-            return preg_match("/class\s+{$className}/m", $file->getContents());
-        } catch (Exception $e) {
-            $output->writeln('<error>File: ' . $file->__toString() . ' | ' . $e->getMessage() . '</error>');
+            return preg_match(sprintf('/class\s+%s/m', $className), $file->getContents());
+        } catch (Exception $exception) {
+            $output->writeln('<error>File: ' . $file->__toString() . ' | ' . $exception->getMessage() . '</error>');
             return false;
         }
     }
 
     /**
      * Resource helper is always one per module for each db type and uses model alias
-     *
-     * @return array
      */
-    protected function getResourceHelperMap()
+    protected function getResourceHelperMap(): array
     {
         $classes = [];
 
@@ -177,7 +156,9 @@ class MetaCommand extends AbstractMagentoCommand
             return $classes;
         }
 
-        $modelAliases = array_keys((array) Mage::getConfig()->getNode('global/models'));
+        $modelAliasesNode = Mage::getConfig()->getNode('global/models');
+        /** @var string[] $modelAliases */
+        $modelAliases = array_keys((array) $modelAliasesNode);
         foreach ($modelAliases as $modelAlias) {
             $resourceHelper = @Mage::getResourceHelper($modelAlias);
             if (is_object($resourceHelper)) {
@@ -188,37 +169,37 @@ class MetaCommand extends AbstractMagentoCommand
         return $classes;
     }
 
-    /**
-     * @param string $group
-     * @param OutputInterface $output
-     *
-     *@return array
-     */
-    protected function getClassMapForGroup($group, OutputInterface $output)
+    protected function getClassMapForGroup(string $group, OutputInterface $output): array
     {
         /**
          * Generate resource helper only for Magento >= EE 1.11 or CE 1.6
          */
-        if ($group == 'resource helpers') {
+        if ($group === 'resource helpers') {
             return $this->getResourceHelperMap();
         }
 
-        $classes = [];
-        foreach ($this->getGroupXmlDefinition($group) as $prefix => $modelDefinition) {
-            if ($group == 'resource models') {
-                if (empty($modelDefinition->resourceModel)) {
+        $classes        = [];
+        $classPrefix    = '';
+        foreach ($this->getGroupXmlDefinition($group) as $prefix => $varienSimplexmlElement) {
+            if ($group === 'resource models') {
+                if (empty($varienSimplexmlElement->resourceModel)) {
                     continue;
                 }
-                $resourceModelNodePath = 'global/models/' . (string) ($modelDefinition->resourceModel);
+
+                $resourceModelNodePath = 'global/models/' . $varienSimplexmlElement->resourceModel;
                 $resourceModelConfig = Mage::getConfig()->getNode($resourceModelNodePath);
                 if ($resourceModelConfig) {
                     $classPrefix = (string) ($resourceModelConfig->class);
                 }
             } else {
-                $classPrefix = (string) ($modelDefinition->class);
+                $classPrefix = (string) ($varienSimplexmlElement->class);
             }
 
-            if (empty($classPrefix)) {
+            if ($classPrefix === '') {
+                continue;
+            }
+
+            if ($classPrefix === '0') {
                 continue;
             }
 
@@ -230,7 +211,7 @@ class MetaCommand extends AbstractMagentoCommand
                 }
             }
 
-            if (empty($searchFolders)) {
+            if ($searchFolders === []) {
                 continue;
             }
 
@@ -281,7 +262,7 @@ class MetaCommand extends AbstractMagentoCommand
                     if ($addToList) {
                         $classes[$classIdentifier] = $classNameAfterRewrites;
 
-                        if ($group == 'helpers' && strpos($classIdentifier, '/') === false) {
+                        if ($group === 'helpers' && strpos($classIdentifier, '/') === false) {
                             $classes[$classIdentifier . '/data'] = $classNameAfterRewrites;
                         }
                     }
@@ -292,12 +273,7 @@ class MetaCommand extends AbstractMagentoCommand
         return $classes;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param $classMaps
-     */
-    protected function writeToOutputOld(InputInterface $input, OutputInterface $output, $classMaps)
+    protected function writeToOutputOld(InputInterface $input, OutputInterface $output, array $classMaps): void
     {
         $map = <<<PHP_WRAP
 <?php
@@ -313,33 +289,28 @@ PHP_WRAP;
                 $map .= '        ' . $method . "('') => [\n";
                 foreach ($classMaps[$group] as $classPrefix => $class) {
                     if (preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $class)) {
-                        $map .= "            '$classPrefix' instanceof \\$class,\n";
+                        $map .= "            '{$classPrefix}' instanceof \\{$class},\n";
                     } else {
                         $output->writeln('<warning>Invalid class name <comment>' . $class . '</comment> ignored</warning>');
                     }
                 }
+
                 $map .= "        ], \n";
             }
         }
+
         $map .= <<<PHP
     ];
 }
 PHP;
         if ($input->getOption('stdout')) {
             $output->writeln($map);
-        } else {
-            if (\file_put_contents($this->_magentoRootFolder . '/.phpstorm.meta.php', $map)) {
-                $output->writeln('<info>File <comment>.phpstorm.meta.php</comment> generated</info>');
-            }
+        } elseif (\file_put_contents($this->_magentoRootFolder . '/.phpstorm.meta.php', $map)) {
+            $output->writeln('<info>File <comment>.phpstorm.meta.php</comment> generated</info>');
         }
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param $classMaps
-     */
-    protected function writeToOutputV2017(InputInterface $input, OutputInterface $output, $classMaps)
+    protected function writeToOutputV2017(InputInterface $input, OutputInterface $output, array $classMaps): void
     {
         $baseMap = <<<PHP_WRAP
 <?php
@@ -357,13 +328,15 @@ PHP_WRAP;
                 asort($classMaps[$group]);
                 foreach ($classMaps[$group] as $classPrefix => $class) {
                     if (preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $class)) {
-                        $map .= "            '$classPrefix' instanceof \\$class,\n";
+                        $map .= "            '{$classPrefix}' instanceof \\{$class},\n";
                     } else {
                         $output->writeln('<warning>Invalid class name <comment>' . $class . '</comment> ignored</warning>');
                     }
                 }
+
                 $map .= "        ], \n";
             }
+
             $map .= <<<PHP
     ];
 }
@@ -372,16 +345,14 @@ PHP;
                 $output->writeln($map);
             } else {
                 $metaPath = $this->_magentoRootFolder . '/.phpstorm.meta.php';
-                if (is_file($metaPath)) {
-                    if (\unlink($metaPath)) {
-                        $output->writeln('<info>Deprecated file <comment>.phpstorm.meta.php</comment> removed</info>');
-                    }
+                if (is_file($metaPath) && \unlink($metaPath)) {
+                    $output->writeln('<info>Deprecated file <comment>.phpstorm.meta.php</comment> removed</info>');
                 }
-                if (!is_dir($metaPath)) {
-                    if (\mkdir($metaPath)) {
-                        $output->writeln('<info>Directory <comment>.phpstorm.meta.php</comment> created</info>');
-                    }
+
+                if (!is_dir($metaPath) && \mkdir($metaPath)) {
+                    $output->writeln('<info>Directory <comment>.phpstorm.meta.php</comment> created</info>');
                 }
+
                 $group = str_replace([' ', '/'], '_', $group);
                 if (\file_put_contents($this->_magentoRootFolder . '/.phpstorm.meta.php/magento_' . $group . '.meta.php', $map)) {
                     $output->writeln('<info>File <comment>.phpstorm.meta.php/magento_' . $group . '.meta.php</comment> generated</info>');
@@ -402,14 +373,16 @@ PHP_WRAP;
                 asort($classMaps[$group]);
                 foreach ($classMaps[$group] as $classPrefix => $class) {
                     if (preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $class)) {
-                        $map .= "            '$classPrefix' => \\$class::class,\n";
+                        $map .= "            '{$classPrefix}' => \\{$class}::class,\n";
                     } else {
                         $output->writeln('<warning>Invalid class name <comment>' . $class . '</comment> ignored</warning>');
                     }
                 }
+
                 $map .= "        ])\n";
                 $map .= "    );\n";
             }
+
             $map .= <<<PHP
 }
 PHP;
@@ -424,7 +397,7 @@ PHP;
         }
     }
 
-    protected function writeToOutputV2019(InputInterface $input, OutputInterface $output, $classMaps)
+    protected function writeToOutputV2019(InputInterface $input, OutputInterface $output, array $classMaps): void
     {
         $baseMap = <<<PHP_WRAP
 <?php
@@ -439,14 +412,16 @@ PHP_WRAP;
                 asort($classMaps[$group]);
                 foreach ($classMaps[$group] as $classPrefix => $class) {
                     if (preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $class)) {
-                        $map .= "            '$classPrefix' => \\$class::class,\n";
+                        $map .= "            '{$classPrefix}' => \\{$class}::class,\n";
                     } else {
                         $output->writeln('<warning>Invalid class name <comment>' . $class . '</comment> ignored</warning>');
                     }
                 }
+
                 $map .= "        ])\n";
                 $map .= "    );\n";
             }
+
             $map .= <<<PHP
 }
 PHP;
@@ -454,16 +429,14 @@ PHP;
                 $output->writeln($map);
             } else {
                 $metaPath = $this->_magentoRootFolder . '/.phpstorm.meta.php';
-                if (is_file($metaPath)) {
-                    if (\unlink($metaPath)) {
-                        $output->writeln('<info>Deprecated file <comment>.phpstorm.meta.php</comment> removed</info>');
-                    }
+                if (is_file($metaPath) && \unlink($metaPath)) {
+                    $output->writeln('<info>Deprecated file <comment>.phpstorm.meta.php</comment> removed</info>');
                 }
-                if (!is_dir($metaPath)) {
-                    if (\mkdir($metaPath)) {
-                        $output->writeln('<info>Directory <comment>.phpstorm.meta.php</comment> created</info>');
-                    }
+
+                if (!is_dir($metaPath) && \mkdir($metaPath)) {
+                    $output->writeln('<info>Directory <comment>.phpstorm.meta.php</comment> created</info>');
                 }
+
                 $group = str_replace([' ', '/'], '_', $group);
                 if (\file_put_contents($this->_magentoRootFolder . '/.phpstorm.meta.php/magento_' . $group . '.meta.php', $map)) {
                     $output->writeln('<info>File <comment>.phpstorm.meta.php/magento_' . $group . '.meta.php</comment> generated</info>');
@@ -484,14 +457,16 @@ PHP_WRAP;
                 asort($classMaps[$group]);
                 foreach ($classMaps[$group] as $classPrefix => $class) {
                     if (preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $class)) {
-                        $map .= "            '$classPrefix' => \\$class::class,\n";
+                        $map .= "            '{$classPrefix}' => \\{$class}::class,\n";
                     } else {
                         $output->writeln('<warning>Invalid class name <comment>' . $class . '</comment> ignored</warning>');
                     }
                 }
+
                 $map .= "        ])\n";
                 $map .= "    );\n";
             }
+
             $map .= <<<PHP
 }
 PHP;
@@ -506,16 +481,13 @@ PHP;
         }
     }
 
-    /**
-     * @param string $group
-     * @return \Mage_Core_Model_Config_Element
-     */
-    protected function getGroupXmlDefinition($group)
+    protected function getGroupXmlDefinition(string $group): ?Varien_Simplexml_Element
     {
-        if ($group == 'resource models') {
+        if ($group === 'resource models') {
             $group = 'models';
         }
 
+        /** @var Mage_Core_Model_Config_Element $definitions */
         $definitions = Mage::getConfig()->getNode('global/' . $group);
 
         switch ($group) {
@@ -535,9 +507,9 @@ PHP;
                 return $definitions->children();
         }
 
-        foreach ($this->missingHelperDefinitionModules as $moduleName) {
-            $children = new Varien_Simplexml_Element(sprintf('<%s/>', strtolower($moduleName)));
-            $children->class = sprintf('Mage_%s_%s', $moduleName, $groupClassType);
+        foreach ($this->missingHelperDefinitionModules as $missingHelperDefinitionModule) {
+            $children = new Varien_Simplexml_Element(sprintf('<%s/>', strtolower($missingHelperDefinitionModule)));
+            $children->class = sprintf('Mage_%s_%s', $missingHelperDefinitionModule, $groupClassType);
             $definitions->appendChild($children);
         }
 

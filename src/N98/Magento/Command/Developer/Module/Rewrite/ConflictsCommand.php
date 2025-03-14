@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\Developer\Module\Rewrite;
 
-use DateTime;
+use Carbon\Carbon;
 use Exception;
 use Mage;
 use N98\JUnitXml\Document as JUnitXmlDocument;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -18,7 +21,7 @@ use Zend_Text_Table;
  */
 class ConflictsCommand extends AbstractRewriteCommand
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('dev:module:rewrite:conflicts')
@@ -26,14 +29,11 @@ class ConflictsCommand extends AbstractRewriteCommand
                 'log-junit',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Log conflicts in JUnit XML format to defined file.'
+                'Log conflicts in JUnit XML format to defined file.',
             )
             ->setDescription('Lists all magento rewrite conflicts');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getHelp(): string
     {
         return <<<HELP
@@ -47,17 +47,11 @@ initialize Magento.
 HELP;
     }
 
-    /**
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return int exit code: 0 no conflicts found, 1 conflicts found, 2 magento could not be initialized
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->detectMagento($output, true);
         if (!$this->initMagento()) {
-            return 2;
+            return Command::INVALID;
         }
 
         $conflicts = [];
@@ -68,17 +62,23 @@ HELP;
             if (!is_array($data)) {
                 continue;
             }
+
             foreach ($data as $class => $rewriteClasses) {
                 if (!$this->_isInheritanceConflict($rewriteClasses)) {
                     continue;
                 }
 
-                $conflicts[] = ['Type'         => $type, 'Class'        => $class, 'Rewrites'     => implode(', ', $rewriteClasses), 'Loaded Class' => $this->_getLoadedClass($type, $class)];
+                $conflicts[] = [
+                    'Type'         => $type,
+                    'Class'        => $class,
+                    'Rewrites'     => implode(', ', $rewriteClasses),
+                    'Loaded Class' => $this->_getLoadedClass($type, $class),
+                ];
             }
         }
 
         if ($input->getOption('log-junit')) {
-            $duration = microtime($time) - $time;
+            $duration = microtime(true) - $time;
             $this->logJUnit($conflicts, $input->getOption('log-junit'), $duration);
         } else {
             $this->writeOutput($output, $conflicts);
@@ -89,12 +89,8 @@ HELP;
 
     /**
      * Returns loaded class by type like models or blocks
-     *
-     * @param string $type
-     * @param string $class
-     * @return string
      */
-    protected function _getLoadedClass($type, $class)
+    protected function _getLoadedClass(string $type, string $class): string
     {
         switch ($type) {
             case 'blocks':
@@ -105,36 +101,30 @@ HELP;
 
             case 'models': // fall-through intended
             default:
-                /** @noinspection PhpParamsInspection */
                 return Mage::getConfig()->getModelClassName($class);
         }
     }
 
-    /**
-     * @param array  $conflicts
-     * @param string $filename
-     * @param float  $duration
-     */
-    protected function logJUnit(array $conflicts, $filename, $duration)
+    protected function logJUnit(array $conflicts, string $filename, float $duration): void
     {
         $document = new JUnitXmlDocument();
-        $suite = $document->addTestSuite();
-        $suite->setName('n98-magerun: ' . $this->getName());
-        $suite->setTimestamp(new DateTime());
-        $suite->setTime($duration);
+        $testSuiteElement = $document->addTestSuite();
+        $testSuiteElement->setName('n98-magerun: ' . $this->getName());
+        $testSuiteElement->setTimestamp(Carbon::now());
+        $testSuiteElement->setTime($duration);
 
-        $testCase = $suite->addTestCase();
-        $testCase->setName('Magento Rewrite Conflict Test');
-        $testCase->setClassname('ConflictsCommand');
+        $testCaseElement = $testSuiteElement->addTestCase();
+        $testCaseElement->setName('Magento Rewrite Conflict Test');
+        $testCaseElement->setClassname('ConflictsCommand');
         foreach ($conflicts as $conflict) {
             $message = sprintf(
                 'Rewrite conflict: Type %s | Class: %s, Rewrites: %s | Loaded class: %s',
                 $conflict['Type'],
                 $conflict['Class'],
                 $conflict['Rewrites'],
-                $conflict['Loaded Class']
+                $conflict['Loaded Class'],
             );
-            $testCase->addFailure($message, 'MagentoRewriteConflictException');
+            $testCaseElement->addFailure($message, 'MagentoRewriteConflictException');
         }
 
         $document->save($filename);
@@ -144,11 +134,8 @@ HELP;
      * Check if rewritten class has inherited the parent class.
      * If yes we have no conflict. The top class can extend every core class.
      * So we cannot check this.
-     *
-     * @param array $classes
-     * @return bool
      */
-    protected function _isInheritanceConflict(array $classes)
+    protected function _isInheritanceConflict(array $classes): bool
     {
         $later = null;
         foreach (array_reverse($classes) as $class) {
@@ -161,35 +148,32 @@ HELP;
                 ) {
                     return true;
                 }
-            } catch (Exception $e) {
+            } catch (Exception $exception) {
                 return true;
             }
+
             $later = $earlier;
         }
 
         return false;
     }
 
-    /**
-     * @param OutputInterface $output
-     * @param array           $conflicts
-     */
-    private function writeOutput(OutputInterface $output, array $conflicts)
+    private function writeOutput(OutputInterface $output, array $conflicts): void
     {
-        if (!$conflicts) {
+        if ($conflicts === []) {
             $output->writeln('<info>No rewrite conflicts were found.</info>');
             return;
         }
 
         $number = count($conflicts);
-        $table = new Zend_Text_Table(['columnWidths' => [8, 30, 60, 60]]);
+        $zendTextTable = new Zend_Text_Table(['columnWidths' => [8, 30, 60, 60]]);
 
-        array_map([$table, 'appendRow'], $conflicts);
-        $output->write($table->render());
+        array_map([$zendTextTable, 'appendRow'], $conflicts);
+        $output->write($zendTextTable->render());
         $message = sprintf(
             '%d %s found!',
             $number,
-            $number === 1 ? 'conflict was' : 'conflicts were'
+            $number === 1 ? 'conflict was' : 'conflicts were',
         );
 
         $output->writeln('<error>' . $message . '</error>');

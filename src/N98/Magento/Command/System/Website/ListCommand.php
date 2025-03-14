@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace N98\Magento\Command\System\Website;
 
 use Mage;
 use N98\Magento\Command\AbstractMagentoCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -14,12 +17,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListCommand extends AbstractMagentoCommand
 {
-    /**
-     * @var array
-     */
-    protected $infos;
+    protected array $infos;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('sys:website:list')
@@ -28,24 +28,19 @@ class ListCommand extends AbstractMagentoCommand
         ;
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $table = [];
-        $this->detectMagento($output, true);
+        $this->detectMagento($output);
 
         if ($input->getOption('format') === null) {
             $this->writeSection($output, 'Magento Websites');
         }
+
         $this->initMagento();
 
-        foreach (Mage::app()->getWebsites() as $store) {
-            $table[$store->getId()] = [$store->getId(), $store->getCode()];
+        foreach (Mage::app()->getWebsites() as $website) {
+            $table[$website->getId()] = [$website->getId(), $website->getCode()];
         }
 
         ksort($table);
@@ -54,6 +49,7 @@ class ListCommand extends AbstractMagentoCommand
         $tableHelper
             ->setHeaders(['id', 'code'])
             ->renderByFormat($output, $table, $input->getOption('format'));
-        return 0;
+
+        return Command::SUCCESS;
     }
 }
