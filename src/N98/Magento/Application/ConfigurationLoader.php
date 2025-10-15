@@ -29,6 +29,7 @@ class ConfigurationLoader
 {
     /**
      * Config passed in the constructor
+     * @var mixed[]
      */
     protected array $_initialConfig;
 
@@ -152,6 +153,7 @@ class ConfigurationLoader
 
     /**
      * Load config from all installed bundles
+     * @param array<string, mixed> $config
      */
     public function loadPluginConfig(array $config, string $magentoRootFolder): array
     {
@@ -187,7 +189,7 @@ class ConfigurationLoader
     {
         $basename = $this->_customConfigFilename;
         $in = array_filter((array) $in, function ($value): bool {
-            return strlen($value) > 0;
+            return (string) $value !== '';
         });
         if (1 > count($in = array_filter($in, 'is_dir'))) {
             return;
@@ -214,7 +216,7 @@ class ConfigurationLoader
         if (is_null($this->_userConfig)) {
             $this->_userConfig = [];
             $configLocator = new ConfigLocator($this->_customConfigFilename, $magentoRootFolder);
-            if (($userConfigFile = $configLocator->getUserConfigFile()) instanceof \N98\Magento\Application\ConfigFile) {
+            if (($userConfigFile = $configLocator->getUserConfigFile()) instanceof ConfigFile) {
                 $this->logDebug('Load user config <comment>' . $userConfigFile->getPath() . '</comment>');
                 $this->_userConfig = $userConfigFile->toArray();
             }
@@ -236,11 +238,11 @@ class ConfigurationLoader
 
         $configLocator = new ConfigLocator($this->_customConfigFilename, $magentoRootFolder);
 
-        if (($projectConfigFile = $configLocator->getProjectConfigFile()) instanceof \N98\Magento\Application\ConfigFile) {
+        if (($projectConfigFile = $configLocator->getProjectConfigFile()) instanceof ConfigFile) {
             $this->_projectConfig = $projectConfigFile->toArray();
         }
 
-        if (($stopFileConfigFile = $configLocator->getStopFileConfigFile($magerunStopFileFolder)) instanceof \N98\Magento\Application\ConfigFile) {
+        if (($stopFileConfigFile = $configLocator->getStopFileConfigFile($magerunStopFileFolder)) instanceof ConfigFile) {
             $this->_projectConfig = $stopFileConfigFile->mergeArray($this->_projectConfig);
         }
 

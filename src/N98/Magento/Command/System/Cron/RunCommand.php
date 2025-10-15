@@ -110,6 +110,9 @@ HELP;
         return $questionHelper->ask($input, $output, $choiceQuestion);
     }
 
+    /**
+     * @return array{0: (callable & string)|(array<int, mixed> & callable), 1: string} [callback, callableName] }
+     */
     private function getCallbackFromRunConfigModel(string $runConfigModel, string $jobCode): array
     {
         if (in_array(preg_match(self::REGEX_RUN_MODEL, $runConfigModel, $runMatches), [0, false], true)) {

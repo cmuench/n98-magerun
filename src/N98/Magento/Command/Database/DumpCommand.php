@@ -260,6 +260,9 @@ HELP;
         return $success ? Command::SUCCESS : Command::FAILURE; // return with correct exec code
     }
 
+    /**
+     * @return array{0:string, 1:array<string>} [filename, execs]
+     */
     private function createExecsArray(InputInterface $input, OutputInterface $output): array
     {
         $execs = [];
@@ -334,6 +337,9 @@ HELP;
         return [$fileName, $execs];
     }
 
+    /**
+     * @param string[] $execs
+     */
     private function runExecs(array $execs, string $fileName, InputInterface $input, OutputInterface $output): bool
     {
         if ($input->getOption('only-command') && !$input->getOption('print-only-filename')) {
