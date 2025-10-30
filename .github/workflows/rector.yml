@@ -53,7 +53,7 @@ jobs:
         run: |
           git config --global user.name 'rector-bot'
           git config --global user.email 'rector-bot@example.com'
-          echo ::set-env name=COMMIT_MESSAGE::$(git log -1 --pretty=format:"%s")
+          echo "name=COMMIT_MESSAGE::$(git log -1 --pretty=format:"%s")" >> $GITHUB_ENV
 
       - name: Commit Rector changes
         if: steps.rector-git-check.outputs.modified == 'true'
