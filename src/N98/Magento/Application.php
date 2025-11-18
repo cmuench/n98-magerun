@@ -47,7 +47,7 @@ class Application extends BaseApplication
     /**
      * @var string
      */
-    public const APP_VERSION = '3.0.0-dev';
+    public const APP_VERSION = '3.0.0';
 
     private static string $logo = "
      ___ ___

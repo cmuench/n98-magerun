@@ -1,20 +1,29 @@
 RECENT CHANGES
 ==============
 
-3.0.0-dev
----------
+3.0.0
+-----
 
-- Add: PHP 8.1 support (by Sven Reichel, Christian Münch)
+- Add: PHP 8.1 support (by Sven Reichel, Christian Münch, Armin Reichel)
+- Add: Support and tests for latest OpenMage LTS versions (by Sven Reichel, Christian Münch)
 - Add: Functional tests based on bats
-- Add: phar build and update Gitub Action Workflow
-- Imp: Update 3rd party dependencies 
-  (twig, phing, symfony, composer, psysh, vsfstream, php-cs-fixer, Github Actions)
+- Add: Github Action Workflow for phar build
+- Add: Requirement for ext-zip
+- Imp: Rebranding from netz98 to valantic CEC
+- Imp: Update 3rd party dependencies (Symfony 6.4, twig, phing, composer, psysh, vfsstream, php-cs-fixer)
 - Imp: New installer based on composer packages
 - Imp: Replace old installer config with new package based config
+- Imp: Require app/bootstrap.php during initialization (by Justin Beaty)
+- Imp: Github Actions update to Ubuntu 20.04
 - Del: Removed bundled Composer package
 - Del: Removed shell command
-- Imp: Github Actions update to Ubuntu 20.04
+- Del: Removed Enterprise Edition commands
+- Del: Removed legacy Magento 2 code leftovers
 - Fix: Install Command: Fix issue with unescaped characters in database name (by Christoph Massmann)
+- Fix: Fix Call to undefined method N98\Magento\Application::renderException()
+- Fix: Remove wrong "Path" class constant
+- Fix: Set default app name correctly
+- Fix: Documentation updates (by Milan Davídek)
 
 2.3.0
 -----
