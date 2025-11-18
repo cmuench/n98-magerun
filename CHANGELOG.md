@@ -12,7 +12,7 @@ RECENT CHANGES
 - Add: Github Action Workflow for phar build (by Christian Münch)
 - Add: Requirement for ext-zip (by Sven Reichel)
 - Imp: Rebranding from netz98 to valantic CEC (by Christian Münch)
-- Imp: Update 3rd party dependencies (twig, phing, composer, psysh, vfsstream, php-cs-fixer) (by Sven Reichel)
+- Imp: Update 3rd party dependencies (twig, phing, composer, psysh, vfsstream, php-cs-fixer) (by Dependbot)
 - Imp: New installer based on composer packages (by Sven Reichel)
 - Imp: Replace old installer config with new package based config (by Sven Reichel)
 - Imp: Require app/bootstrap.php during initialization (by Justin Beaty)
