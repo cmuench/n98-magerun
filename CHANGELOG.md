@@ -1,6 +1,11 @@
 RECENT CHANGES
 ==============
 
+3.0.1
+-----
+
+- Fix: Release process fix - semver check (by Christian Münch)
+
 3.0.0
 -----
 
